@@ -1,0 +1,18 @@
+
+        <logs xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1">
+            <log>
+                <name>RealTime_Drilling</name>
+                <logCurveInfo><mnemonic>TIME</mnemonic></logCurveInfo>
+                <logCurveInfo><mnemonic>DEPT</mnemonic></logCurveInfo>
+                <logCurveInfo><mnemonic>HKLD</mnemonic></logCurveInfo>
+                <logCurveInfo><mnemonic>WOB</mnemonic></logCurveInfo>
+                <logCurveInfo><mnemonic>ROP</mnemonic></logCurveInfo>
+                <logCurveInfo><mnemonic>RPM</mnemonic></logCurveInfo>
+                <logCurveInfo><mnemonic>SPP</mnemonic></logCurveInfo>
+                
+                <logData>
+                    <data>2026-02-21T17:14:57.009268,4421.50,201.72,14.69,30.43,119.47,3006.60</data>
+                </logData>
+            </log>
+        </logs>
+        
