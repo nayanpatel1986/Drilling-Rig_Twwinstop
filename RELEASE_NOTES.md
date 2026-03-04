@@ -388,8 +388,16 @@ Please include:
 
 ## 👥 Contributors
 
-- **Chinnadurai** - System Architecture, Requirements
-- **Development Team** - Implementation, Testing, Optimization
+### Development Team
+- **Nayan Patel** (@nayanpatel1986) - Lead Developer, Original Implementation
+- **Chinnadurai** - System Architecture, Performance Optimization & Requirements
+
+### Special Thanks
+- Nayan Patel for the robust original DrillBit implementation
+- Chinnadurai for defining system architecture and optimization requirements
+- Drilling engineering team for domain expertise and operational insights
+- Operations team for performance requirements definition
+- Testing team for comprehensive validation and feedback
 
 ---
 

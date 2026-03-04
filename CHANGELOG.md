@@ -194,5 +194,18 @@ Existing deployments should:
 
 ---
 
+## Contributors
+
+### v2.0.0 Team
+- **Nayan Patel** (@nayanpatel1986) - Lead Developer, Original Implementation
+- **Chinnadurai** - System Architecture, Performance Optimization & Requirements
+
+### Special Thanks
+- Drilling engineering team for domain expertise and validation
+- Operations team for performance requirements definition
+- Testing team for comprehensive validation
+
+---
+
 **Maintained By**: DrillBit Development Team
 **Repository**: https://github.com/nayanpatel1986/DRIILBIT_TWIN

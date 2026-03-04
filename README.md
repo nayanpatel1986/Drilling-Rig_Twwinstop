@@ -218,11 +218,13 @@ Copyright © 2026 All Rights Reserved
 
 ## 👥 Authors
 
-- **Chinnadurai** - System Architecture & Requirements
-- **Development Team** - Implementation & Optimization
+- **Nayan Patel** - Lead Developer, Original Implementation
+- **Chinnadurai** - System Architecture, Performance Optimization & Requirements
 
 ## 🙏 Acknowledgments
 
+- Nayan Patel for the original DrillBit implementation
+- Chinnadurai for system architecture and optimization requirements
 - Drilling engineering team for domain expertise
 - Operations team for performance requirements
 - Testing team for validation and feedback
