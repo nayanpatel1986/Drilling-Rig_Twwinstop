@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Activity, Settings, X, Gauge, ArrowDownCircle } from 'lucide-react';
 import { getRigData } from '../api';
 import RadialGauge from '../components/RadialGauge';
+import { useRealtimeData } from '../hooks/useRealtimeData';
 
 /* ── All available parameters for selection ──── */
 const ALL_PARAMS = [
@@ -153,6 +154,14 @@ function SimpleRig({ blockPosition = 0, depth = 0 }) {
 
 /* ── Main Component ───────────────────────────── */
 export default function DrillingOverview() {
+    // WebSocket real-time data (Phase 2 optimization)
+    const { 
+        data: wsData, 
+        isConnected, 
+        connectionStatus, 
+        latency 
+    } = useRealtimeData();
+    
     const [data, setData] = useState(null);
     const [gauges, setGauges] = useState(() => load('drillOvGauges_v7', DEFAULT_GAUGES));
     const [stats, setStats] = useState(() => load('drillOvStats_v2', DEFAULT_STATS));
@@ -169,16 +178,25 @@ export default function DrillingOverview() {
     useEffect(() => { localStorage.setItem('drillOvStats_v2', JSON.stringify(stats)); }, [stats]);
     useEffect(() => { localStorage.setItem('drillOvKpis_v3', JSON.stringify(kpis)); }, [kpis]);
 
-
+    // Update data from WebSocket
     useEffect(() => {
-        const fetchData = async () => {
-            const d = await getRigData();
-            if (d) setData(d);
-        };
-        fetchData();
-        const interval = setInterval(fetchData, 1000);
-        return () => clearInterval(interval);
-    }, []);
+        if (wsData) {
+            setData(wsData);
+        }
+    }, [wsData]);
+
+    // Fallback HTTP polling when WebSocket is not connected
+    useEffect(() => {
+        if (!isConnected) {
+            const fetchData = async () => {
+                const d = await getRigData();
+                if (d) setData(d);
+            };
+            fetchData();
+            const interval = setInterval(fetchData, 2000);  // 2s fallback polling
+            return () => clearInterval(interval);
+        }
+    }, [isConnected]);
 
     const val = (key) => {
         if (!data) return 0;
@@ -197,6 +215,20 @@ export default function DrillingOverview() {
 
     return (
         <div className="flex flex-col -mt-4 gap-2 overflow-hidden" style={{ height: 'calc(100vh - 90px)' }}>
+            {/* Connection Status Indicator */}
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/60 rounded border border-white/5 flex-shrink-0">
+                <div className={`w-2 h-2 rounded-full ${
+                    connectionStatus === 'connected' ? 'bg-green-500 animate-pulse' : 
+                    connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 
+                    'bg-red-500'
+                }`}></div>
+                <span className="text-xs text-gray-400 font-medium">
+                    {connectionStatus === 'connected' ? `⚡ Real-time (${latency || 0}ms latency)` : 
+                     connectionStatus === 'connecting' ? '🔄 Connecting...' : 
+                     '📡 Polling Mode'}
+                </span>
+            </div>
+            
             {/* Top Status Bar */}
             <div className="grid grid-cols-3 gap-2 flex-shrink-0">
                 <div className="card border border-white/5 px-4 py-2 flex items-center justify-between gap-3 bg-slate-800/40">

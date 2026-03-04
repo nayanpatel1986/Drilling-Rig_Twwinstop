@@ -30,9 +30,10 @@ class InfluxWrapper:
     def query_latest(self, measurement="realtime_drilling"):
         """Get the latest values for all fields in a measurement."""
         try:
+            # OPTIMIZED: Query only last 5 minutes instead of 24 hours
             query = f'''
                 from(bucket: "{self.bucket}")
-                |> range(start: -24h)
+                |> range(start: -5m)
                 |> filter(fn: (r) => r._measurement == "{measurement}")
                 |> last()
             '''

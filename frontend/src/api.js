@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
     baseURL: '/api', // Vite proxy handles redirection to http://localhost:8000
-    timeout: 5000,
+    timeout: 2000,  // Reduced to 2 seconds for faster failure detection
 });
 
 // Request interceptor to add Token

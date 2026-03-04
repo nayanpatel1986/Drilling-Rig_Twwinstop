@@ -2,6 +2,7 @@ import time
 import threading
 import pandas as pd
 from datetime import datetime
+import asyncio
 from witsml.simulator import WitsmlSimulator
 from witsml.parser import WitsmlParser
 from witsml.mapper import MnemonicMapper
@@ -18,6 +19,12 @@ class AnalyticsEngine:
         self.influx = InfluxWrapper()
         self.witsml_client = None  # Persistent WITSML client for status checking
         self.thread = threading.Thread(target=self._run_loop, daemon=True)
+        
+        # Performance optimization: Cache timezone offset
+        self._tz_offset = pd.Timedelta(hours=-5, minutes=-30)  # IST to UTC
+        
+        # WebSocket manager (will be set by main.py)
+        self.ws_manager = None
     
     @property
     def is_witsml_connected(self):
@@ -108,12 +115,12 @@ class AnalyticsEngine:
                 
                 if time_col:
                     try:
+                        # Optimized time handling with cached offset
                         df['time'] = pd.to_datetime(df[time_col], errors='coerce')
                         
-                        # If time is timezone naive, assume it is rig local time (+05:30)
-                        # and convert to UTC by subtracting 5.5 hours so InfluxDB queries work correctly.
+                        # Apply cached timezone offset if needed
                         if df['time'].dt.tz is None:
-                            df['time'] = df['time'] - pd.Timedelta(hours=5, minutes=30)
+                            df['time'] = df['time'] + self._tz_offset
                             
                         df = df.dropna(subset=['time'])
                         df.set_index('time', inplace=True)
@@ -129,12 +136,26 @@ class AnalyticsEngine:
 
                         self.influx.write_dataframe(df, "realtime_drilling")
                         print(f"Processed WITSML Log: {len(df)} rows written to InfluxDB", flush=True)
+                        
+                        # Broadcast to WebSocket clients (Phase 2 optimization)
+                        if self.ws_manager and len(df) > 0:
+                            try:
+                                latest_data = df.iloc[-1].to_dict()
+                                latest_data['_time'] = df.index[-1].isoformat()
+                                
+                                # Run async broadcast in event loop
+                                loop = asyncio.new_event_loop()
+                                asyncio.set_event_loop(loop)
+                                loop.run_until_complete(self.ws_manager.broadcast(latest_data))
+                                loop.close()
+                            except Exception as e:
+                                print(f"WebSocket broadcast error: {e}", flush=True)
                     except Exception as e:
                         print(f"InfluxDB Write Error: {e}", flush=True)
                 else:
                     print(f"Pipeline: No time column found in {list(df.columns[:15])}. Skipping InfluxDB write.", flush=True)
 
-            time.sleep(1) # 1s refresh rate for live data
+            time.sleep(0.05)  # 50ms refresh rate for <100ms latency target
 
     def _calculate_derived_params(self, df):
         """Calculates MSE, d-exponent, etc."""

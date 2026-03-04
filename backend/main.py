@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import WebSocket, WebSocketDisconnect
 import uvicorn
 from typing import Dict, List
 
@@ -21,6 +22,7 @@ app.add_middleware(
 
 # Analytics engine import
 from services.analytics import engine as analytics_engine
+from services.websocket_server import ws_manager, websocket_endpoint
 
 from auth.router import router as auth_router
 from database import engine, Base
@@ -41,6 +43,9 @@ app.include_router(modbus_config_router)
 
 @app.on_event("startup")
 async def startup_event():
+    # Connect WebSocket manager to analytics engine
+    analytics_engine.ws_manager = ws_manager
+    
     # Analytics engine (WITSML simulator / client)
     if not LIVE_MODE:
         analytics_engine.start()
@@ -180,6 +185,16 @@ def health_check():
         "live_mode": LIVE_MODE,
         "witsml_connected": engine.is_witsml_connected if LIVE_MODE else False
     }
+
+@app.websocket("/ws/realtime")
+async def realtime_websocket(websocket: WebSocket):
+    """WebSocket endpoint for real-time drilling data"""
+    await websocket_endpoint(websocket)
+
+@app.get("/ws/stats")
+async def websocket_stats():
+    """Get WebSocket connection statistics"""
+    return ws_manager.get_stats()
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
