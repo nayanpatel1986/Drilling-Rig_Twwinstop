@@ -1,0 +1,29 @@
+
+> drillbit-frontend@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 2267 modules transformed.
+[31mx[39m Build failed in 5.73s
+[31merror during build:
+[31msrc/pages/DrillingTwin.jsx (7:21): "WidthProvider" is not exported by "node_modules/react-grid-layout/dist/index.mjs", imported by "src/pages/DrillingTwin.jsx".[31m
+file: [36mC:/Users/NOVCAL/Drilling-Rig/frontend/src/pages/DrillingTwin.jsx:7:21[31m
+[33m
+5: import { getRigData } from '../api';
+6: import RadialGauge from '../components/RadialGauge';
+7: import { Responsive, WidthProvider } from 'react-grid-layout';
+                        ^
+8: const ResponsiveGridLayout = WidthProvider(Responsive);
+9: import 'react-grid-layout/css/styles.css';
+[31m
+    at getRollupError (file:///C:/Users/NOVCAL/Drilling-Rig/frontend/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
+    at error (file:///C:/Users/NOVCAL/Drilling-Rig/frontend/node_modules/rollup/dist/es/shared/parseAst.js:398:42)
+    at Module.error (file:///C:/Users/NOVCAL/Drilling-Rig/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17040:16)
+    at Module.traceVariable (file:///C:/Users/NOVCAL/Drilling-Rig/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17452:29)
+    at ModuleScope.findVariable (file:///C:/Users/NOVCAL/Drilling-Rig/frontend/node_modules/rollup/dist/es/shared/node-entry.js:15070:39)
+    at Identifier.bind (file:///C:/Users/NOVCAL/Drilling-Rig/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5447:40)
+    at CallExpression.bind (file:///C:/Users/NOVCAL/Drilling-Rig/frontend/node_modules/rollup/dist/es/shared/node-entry.js:2829:23)
+    at CallExpression.bind (file:///C:/Users/NOVCAL/Drilling-Rig/frontend/node_modules/rollup/dist/es/shared/node-entry.js:12179:15)
+    at VariableDeclarator.bind (file:///C:/Users/NOVCAL/Drilling-Rig/frontend/node_modules/rollup/dist/es/shared/node-entry.js:2829:23)
+    at VariableDeclaration.bind (file:///C:/Users/NOVCAL/Drilling-Rig/frontend/node_modules/rollup/dist/es/shared/node-entry.js:2825:28)[39m

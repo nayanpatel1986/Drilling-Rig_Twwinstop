@@ -1,0 +1,251 @@
+﻿
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m719[22m[2m[0m ms[22m
+
+  [32mΓ₧£[39m  [1mLocal[22m:   [36mhttp://localhost:[1m3001[22m/[39m
+  [32mΓ₧£[39m  [1mNetwork[22m: [36mhttp://192.168.208.1:[1m3001[22m/[39m
+  [32mΓ₧£[39m  [1mNetwork[22m: [36mhttp://192.168.1.7:[1m3001[22m/[39m
+[2m[32m  Γ₧£[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
+node.exe : Error: 
+[31m  Failed to scan 
+for dependencies from 
+entries:
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (Error: [31m    
+  F...s from entrie    
+s::String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+  C:/Users/NOVCAL/Drill
+ing-Rig/frontend/index.
+html
+
+  [39m[31mX [41;31m[
+[41;97mERROR[41;31m]
+[0m [1mMissing "./buil
+d/ResponsiveReactGridLa
+yout" specifier in 
+"react-grid-layout" 
+package[0m 
+[1m[35m[plugin 
+vite:dep-scan][0m
+
+    src/pages/DrillingT
+win.jsx:5:23:
+[37m      5 Γöé 
+...esponsive from [32m
+'react-grid-layout/buil
+d/ResponsiveReactGridLa
+yout'[37m;
+        Γò╡            
+       [32m~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~[0m
+
+  This error came from 
+the "onResolve" 
+callback registered 
+here:
+
+    node_modules/esbuil
+d/lib/main.js:1150:20:
+[37m      1150 Γöé    
+   let promise = 
+[32m[37msetup({
+           Γò╡         
+            [32m^[0m
+
+    at setup (file:///C
+:/Users/NOVCAL/Drilling
+-Rig/frontend/node_modu
+les/vite/dist/node/chun
+ks/dep-BK3b2jBa.js:4978
+9:13)
+    at handlePlugins (C
+:\Users\NOVCAL\Drilling
+-Rig\frontend\node_modu
+les\esbuild\lib\main.js
+:1150:21)
+    at 
+buildOrContextImpl (C:\
+Users\NOVCAL\Drilling-R
+ig\frontend\node_module
+s\esbuild\lib\main.js:8
+73:5)
+    at 
+Object.buildOrContext (
+C:\Users\NOVCAL\Drillin
+g-Rig\frontend\node_mod
+ules\esbuild\lib\main.j
+s:699:5)
+    at C:\Users\NOVCAL\
+Drilling-Rig\frontend\n
+ode_modules\esbuild\lib
+\main.js:2032:68
+    at new Promise 
+(<anonymous>)
+    at Object.context (
+C:\Users\NOVCAL\Drillin
+g-Rig\frontend\node_mod
+ules\esbuild\lib\main.j
+s:2032:27)
+    at Object.context (
+C:\Users\NOVCAL\Drillin
+g-Rig\frontend\node_mod
+ules\esbuild\lib\main.j
+s:1874:58)
+    at 
+prepareEsbuildScanner (
+file:///C:/Users/NOVCAL
+/Drilling-Rig/frontend/
+node_modules/vite/dist/
+node/chunks/dep-BK3b2jB
+a.js:49576:24)
+
+
+[31mX [41;31m[[41;97
+mERROR[41;31m][0m 
+[1mMissing "./build/co
+mponents/WidthProvider"
+ specifier in 
+"react-grid-layout" 
+package[0m 
+[1m[35m[plugin 
+vite:dep-scan][0m
+
+    src/pages/DrillingT
+win.jsx:6:26:
+[37m      6 Γöé 
+...thProvider from [32
+m'react-grid-layout/bui
+ld/components/WidthProv
+ider'[37m;
+        Γò╡            
+        [32m~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~[0m
+
+  This error came from 
+the "onResolve" 
+callback registered 
+here:
+
+    node_modules/esbuil
+d/lib/main.js:1150:20:
+[37m      1150 Γöé    
+   let promise = 
+[32m[37msetup({
+           Γò╡         
+            [32m^[0m
+
+    at setup (file:///C
+:/Users/NOVCAL/Drilling
+-Rig/frontend/node_modu
+les/vite/dist/node/chun
+ks/dep-BK3b2jBa.js:4978
+9:13)
+    at handlePlugins (C
+:\Users\NOVCAL\Drilling
+-Rig\frontend\node_modu
+les\esbuild\lib\main.js
+:1150:21)
+    at 
+buildOrContextImpl (C:\
+Users\NOVCAL\Drilling-R
+ig\frontend\node_module
+s\esbuild\lib\main.js:8
+73:5)
+    at 
+Object.buildOrContext (
+C:\Users\NOVCAL\Drillin
+g-Rig\frontend\node_mod
+ules\esbuild\lib\main.j
+s:699:5)
+    at C:\Users\NOVCAL\
+Drilling-Rig\frontend\n
+ode_modules\esbuild\lib
+\main.js:2032:68
+    at new Promise 
+(<anonymous>)
+    at Object.context (
+C:\Users\NOVCAL\Drillin
+g-Rig\frontend\node_mod
+ules\esbuild\lib\main.j
+s:2032:27)
+    at Object.context (
+C:\Users\NOVCAL\Drillin
+g-Rig\frontend\node_mod
+ules\esbuild\lib\main.j
+s:1874:58)
+    at 
+prepareEsbuildScanner (
+file:///C:/Users/NOVCAL
+/Drilling-Rig/frontend/
+node_modules/vite/dist/
+node/chunks/dep-BK3b2jB
+a.js:49576:24)
+
+
+    at 
+failureErrorWithLog (C:
+\Users\NOVCAL\Drilling-
+Rig\frontend\node_modul
+es\esbuild\lib\main.js:
+1472:15)
+    at C:\Users\NOVCAL\
+Drilling-Rig\frontend\n
+ode_modules\esbuild\lib
+\main.js:945:25
+    at 
+runOnEndCallbacks (C:\U
+sers\NOVCAL\Drilling-Ri
+g\frontend\node_modules
+\esbuild\lib\main.js:13
+15:45)
+    at 
+buildResponseToResult (
+C:\Users\NOVCAL\Drillin
+g-Rig\frontend\node_mod
+ules\esbuild\lib\main.j
+s:943:7)
+    at C:\Users\NOVCAL\
+Drilling-Rig\frontend\n
+ode_modules\esbuild\lib
+\main.js:955:9
+    at new Promise 
+(<anonymous>)
+    at requestCallbacks
+.on-end (C:\Users\NOVCA
+L\Drilling-Rig\frontend
+\node_modules\esbuild\l
+ib\main.js:954:54)
+    at handleRequest (C
+:\Users\NOVCAL\Drilling
+-Rig\frontend\node_modu
+les\esbuild\lib\main.js
+:647:17)
+    at 
+handleIncomingPacket (C
+:\Users\NOVCAL\Drilling
+-Rig\frontend\node_modu
+les\esbuild\lib\main.js
+:672:7)
+    at 
+Socket.readFromStdout (
+C:\Users\NOVCAL\Drillin
+g-Rig\frontend\node_mod
+ules\esbuild\lib\main.j
+s:600:7)

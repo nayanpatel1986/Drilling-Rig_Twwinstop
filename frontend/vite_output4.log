@@ -1,0 +1,84 @@
+﻿
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m619[22m[2m[0m ms[22m
+
+  [32mΓ₧£[39m  [1mLocal[22m:   [36mhttp://localhost:[1m3001[22m/[39m
+  [32mΓ₧£[39m  [1mNetwork[22m: [36mhttp://192.168.208.1:[1m3001[22m/[39m
+  [32mΓ₧£[39m  [1mNetwork[22m: [36mhttp://192.168.1.7:[1m3001[22m/[39m
+[2m[32m  Γ₧£[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
+[2m10:27:56 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/DrillingTwin.jsx, /src/index.css[22m
+node.exe : 
+[2m10:30:02 PM[22m [
+31m[1m[vite][22m[39m
+ [31mhttp proxy 
+error: 
+/api/auth/login[39m
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : 
+NotSpecified: ([2    
+m10:30:02 PM...auth/lo 
+   gin[39m:String) 
+[], R    emoteException
+    + 
+FullyQualifiedErrorI   
+ d : NativeCommandError
+ 
+Error: getaddrinfo 
+ENOTFOUND backend
+    at GetAddrInfoReqWr
+ap.onlookupall [as 
+oncomplete] 
+(node:dns:122:26)
+[2m10:31:38 PM[22m [
+31m[1m[vite][22m[39m
+ [31mhttp proxy 
+error: 
+/api/auth/login[39m
+Error: getaddrinfo 
+ENOTFOUND backend
+    at GetAddrInfoReqWr
+ap.onlookupall [as 
+oncomplete] 
+(node:dns:122:26)
+[2m10:38:11 PM[22m [
+31m[1m[vite][22m[39m
+ [31mhttp proxy 
+error: 
+/api/auth/login[39m
+Error: getaddrinfo 
+ENOTFOUND backend
+    at GetAddrInfoReqWr
+ap.onlookupall [as 
+oncomplete] 
+(node:dns:122:26)
+[2m10:41:01 PM[22m [
+31m[1m[vite][22m[39m
+ [31mhttp proxy 
+error: 
+/api/auth/login[39m
+Error: getaddrinfo 
+ENOTFOUND backend
+    at GetAddrInfoReqWr
+ap.onlookupall [as 
+oncomplete] 
+(node:dns:122:26)
+[2m10:41:06 PM[22m [
+31m[1m[vite][22m[39m
+ [31mhttp proxy 
+error: 
+/api/auth/login[39m
+Error: getaddrinfo 
+ENOTFOUND backend
+    at GetAddrInfoReqWr
+ap.onlookupall [as 
+oncomplete] 
+(node:dns:122:26)

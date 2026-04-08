@@ -34,10 +34,13 @@ class WitsmlSimulator:
                 <logCurveInfo><mnemonic>WOB</mnemonic></logCurveInfo>
                 <logCurveInfo><mnemonic>ROP</mnemonic></logCurveInfo>
                 <logCurveInfo><mnemonic>RPM</mnemonic></logCurveInfo>
+                <logCurveInfo><mnemonic>PP2_RPM</mnemonic></logCurveInfo>
+                <logCurveInfo><mnemonic>PP3_RPM</mnemonic></logCurveInfo>
+                <logCurveInfo><mnemonic>PP4_RPM</mnemonic></logCurveInfo>
                 <logCurveInfo><mnemonic>SPP</mnemonic></logCurveInfo>
                 
                 <logData>
-                    <data>{timestamp},{self.current_depth:.2f},{hkld:.2f},{wob:.2f},{rop:.2f},{rpm:.2f},{spp:.2f}</data>
+                    <data>{timestamp},{self.current_depth:.2f},{hkld:.2f},{wob:.2f},{rop:.2f},{rpm:.2f},{rpm*0.98:.2f},{rpm*0.96:.2f},{rpm*1.01:.2f},{spp:.2f}</data>
                 </logData>
             </log>
         </logs>

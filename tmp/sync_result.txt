@@ -1,0 +1,3 @@
+﻿TELEGRAF SYNC: Config written to /telegraf-config/telegraf.conf
+TELEGRAF SYNC: Config also written to /host-telegraf-config/telegraf.conf
+TELEGRAF SYNC: Container restarted successfully.

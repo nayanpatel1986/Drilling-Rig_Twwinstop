@@ -1,0 +1,54 @@
+[agent]
+  interval = "1s"
+  round_interval = true
+  metric_batch_size = 1000
+  metric_buffer_limit = 10000
+  collection_jitter = "0s"
+  flush_interval = "10s"
+  flush_jitter = "0s"
+  precision = ""
+  hostname = "rig-telegraf"
+  omit_hostname = false
+
+[[inputs.internal]]
+  collect_memstats = true
+
+[[outputs.influxdb_v2]]
+  urls = ["http://influxdb:8086"]
+  token = "my-super-secret-auth-token"
+  organization = "nov_rig"
+  bucket = "rig_data"
+
+# ?????? TWINSTOP (twinstop) ??????
+[[inputs.modbus]]
+  name = "rig_sensors"
+  slave_id = 1
+  timeout = "1s"
+  configuration_type = "register"
+  controller = "tcp://192.168.1.10:502"
+
+  holding_registers = [
+    { name = "Brake_Pressure_Setpoint", byte_order = "ABCD", data_type = "FLOAT32-IEEE", scale = 1.0, address = [200, 201] },
+    { name = "Target_Torque", byte_order = "ABCD", data_type = "FLOAT32-IEEE", scale = 1.0, address = [202, 203] },
+    { name = "C1", byte_order = "ABCD", data_type = "FLOAT32-IEEE", scale = 1.0, address = [440, 441] },
+    { name = "C2", byte_order = "ABCD", data_type = "FLOAT32-IEEE", scale = 1.0, address = [456, 457] },
+    { name = "C3", byte_order = "ABCD", data_type = "FLOAT32-IEEE", scale = 1.0, address = [472, 473] },
+    { name = "EDMSCOUNT", byte_order = "ABCD", data_type = "FLOAT32-IEEE", scale = 1.0, address = [204, 205] },
+    { name = "BLOCKHEIGHT", byte_order = "ABCD", data_type = "FLOAT32-IEEE", scale = 1.0, address = [208, 209] },
+    { name = "Point1Capture", byte_order = "ABCD", data_type = "FLOAT32-IEEE", scale = 1.0, address = [441, 442] },
+    { name = "Point2Capture", byte_order = "ABCD", data_type = "FLOAT32-IEEE", scale = 1.0, address = [457, 458] },
+    { name = "Point3Capture", byte_order = "ABCD", data_type = "FLOAT32-IEEE", scale = 1.0, address = [473, 474] },
+    { name = "LiveEncounterCount", byte_order = "ABCD", data_type = "FLOAT32-IEEE", scale = 1.0, address = [409, 410] },
+  ]
+
+  coils = [
+    { name = "EStop_Reset", address = [100] },
+    { name = "Brake_Release", address = [101] },
+    { name = "Safety_Override", address = [105] },
+  ]
+
+  [inputs.modbus.tags]
+    device_name = "TWINSTOP"
+    device_type = "twinstop"
+    rig_id = "E-1400-1"
+

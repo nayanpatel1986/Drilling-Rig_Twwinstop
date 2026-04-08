@@ -7,6 +7,7 @@ import io
 import zipfile
 import xml.etree.ElementTree as ET
 from typing import Optional, List
+from datetime import datetime
 
 router = APIRouter(prefix="/export", tags=["export"])
 influx = InfluxWrapper()
@@ -205,51 +206,65 @@ def _xml_escape(s):
 
 @router.get("/excel")
 def export_excel(
-    start_date: str = Query(..., description="Start date in ISO format, e.g. 2026-01-01T00:00:00Z"),
-    end_date: str = Query(..., description="End date in ISO format, e.g. 2026-07-01T00:00:00Z"),
-    measurement: str = "realtime_drilling",
-    fields: Optional[str] = Query(None, description="Comma-separated list of field names to include"),
+    start_date: str = Query(..., description="Start date in ISO format"),
+    end_date: str = Query(..., description="End date in ISO format"),
+    fields: Optional[str] = Query(None, description="Comma-separated fields"),
     current_user = Depends(get_current_user)
 ):
     """
-    Exports data between two dates as an Excel (.xlsx) file.
-    Uses pure Python stdlib — no openpyxl needed.
+    Exports merged WITSML and Modbus data as Excel.
     """
     try:
-        field_list = [f.strip() for f in fields.split(",")] if fields else None
+        # 1. Helper to fetch cleaned dataframes
+        def get_df(measurement):
+            query = f'''
+            from(bucket: "{influx.bucket}")
+              |> range(start: {start_date}, stop: {end_date})
+              |> filter(fn: (r) => r["_measurement"] == "{measurement}")
+              |> pivot(rowKey:["_time"], columnKey:["_field"], valueColumn:"_value")
+            '''
+            df = influx.query_api.query_data_frame(query=query)
+            if isinstance(df, list):
+                df = pd.concat(df, ignore_index=True)
+            if df is None or df.empty:
+                return pd.DataFrame()
+            
+            # Cleanup InfluxDB internal columns
+            drop_cols = ['_start', '_stop', 'result', 'table', '_measurement']
+            df.drop(columns=[c for c in drop_cols if c in df.columns], inplace=True, errors='ignore')
+            return df
 
-        field_filter = ""
-        if field_list:
-            field_clauses = " or ".join([f'r._field == "{f}"' for f in field_list])
-            field_filter = f'|> filter(fn: (r) => {field_clauses})'
+        # 2. Fetch both sources
+        df_drilling = get_df("realtime_drilling")
+        df_modbus = get_df("modbus")
 
-        query = f'''
-        from(bucket: "{influx.bucket}")
-          |> range(start: {start_date}, stop: {end_date})
-          |> filter(fn: (r) => r["_measurement"] == "{measurement}")
-          {field_filter}
-          |> pivot(rowKey:["_time"], columnKey:["_field"], valueColumn:"_value")
-          |> sort(columns: ["_time"], desc: false)
-        '''
-
-        tables = influx.query_api.query_data_frame(query=query)
-
-        if isinstance(tables, list):
-            df = pd.concat(tables, ignore_index=True)
-        else:
-            df = tables
-
-        if df.empty:
+        if df_drilling.empty and df_modbus.empty:
             raise HTTPException(status_code=404, detail="No data found for this period")
 
-        # Cleanup internal InfluxDB columns
-        drop_cols = ['_start', '_stop', 'result', 'table', '_measurement']
-        df.drop(columns=[c for c in drop_cols if c in df.columns], inplace=True, errors='ignore')
+        # 3. Merge dataframes by time
+        if df_drilling.empty:
+            df = df_modbus
+        elif df_modbus.empty:
+            df = df_drilling
+        else:
+            df = pd.merge(df_drilling, df_modbus, on='_time', how='outer').sort_values('_time')
 
-        # Rename _time to Time
+        # 4. Map special keys if they exist (e.g. BH -> BLOCK_HEIGHT)
+        if 'BH' in df.columns:
+            df['BLOCK_HEIGHT'] = df['BH']
+            df['BLOCK_POS'] = df['BH']
+
+        # 5. Filter for requested fields
+        if fields:
+            field_list = [f.strip() for f in fields.split(",")]
+            # Keep _time for indexing
+            cols_to_keep = ['_time'] + [f for f in field_list if f in df.columns]
+            df = df[cols_to_keep]
+
+        # 6. Final cleanup and formatting
         if '_time' in df.columns:
             df.rename(columns={'_time': 'Time'}, inplace=True)
-
+        
         headers = list(df.columns)
         rows = df.values.tolist()
 
@@ -259,8 +274,14 @@ def export_excel(
             output,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-        response.headers["Content-Disposition"] = f"attachment; filename=trend_export_{measurement}.xlsx"
+        response.headers["Content-Disposition"] = f"attachment; filename=rig_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Excel Export Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
     except HTTPException:
         raise

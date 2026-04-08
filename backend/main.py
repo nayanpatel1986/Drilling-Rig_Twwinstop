@@ -31,6 +31,7 @@ from services.wells import router as wells_router
 from services.export import router as export_router
 from services.witsml_config import router as witsml_config_router
 from services.modbus_config import router as modbus_config_router
+from services.modbus_router import router as modbus_control_router
 
 # Create tables if not exist
 Base.metadata.create_all(bind=engine)
@@ -40,6 +41,7 @@ app.include_router(wells_router)
 app.include_router(export_router)
 app.include_router(witsml_config_router)
 app.include_router(modbus_config_router)
+app.include_router(modbus_control_router)
 
 @app.on_event("startup")
 async def startup_event():
@@ -88,28 +90,43 @@ def read_root():
 def convert_units_to_metric(data):
     def map_and_convert(row):
         if "BitDepth" in row and row["BitDepth"] is not None:
-            row["BitDepth"] = round(row["BitDepth"] * 0.3048, 2)
+            row["BitDepth"] = round(row["BitDepth"], 2)
         if "Depth" in row and row["Depth"] is not None:
-            row["Depth"] = round(row["Depth"] * 0.3048, 2)
+            row["Depth"] = round(row["Depth"], 2)
         if "BlockPosition" in row and row["BlockPosition"] is not None:
-            row["BlockPosition"] = round(row["BlockPosition"] * 0.3048, 2)
+            row["BlockPosition"] = round(row["BlockPosition"], 2)
             
         # Convert BBL to Cubic Meters
         bbl_fields = ["PitVolume1", "PitVolume2", "PitVolume3", "PitVolume4", 
                       "TripTank1", "TripTank2", "TripTankGL", "TT_VOL"]
+        # The frontend now handles BBL to m3 conversions to allow user preference selection.
         for field in bbl_fields:
             if field in row and row[field] is not None:
-                row[field] = round(row[field] * 0.158987, 2)
+                row[field] = round(row[field], 2)
+
                 
         # Map Pump Pressure / Standpipe Pressure for UI
-        # Prefer Modbus values (PUMPPRESSURE / STP_PRS_1) over WITSML StandpipePressure
-        if "PUMPPRESSURE" in row and row["PUMPPRESSURE"] is not None:
+        # Only override with Modbus values if they actually exist and are not null
+        if row.get("PUMPPRESSURE") is not None:
             row["StandpipePressure"] = row["PUMPPRESSURE"]
-        elif "STP_PRS_1" in row and row["STP_PRS_1"] is not None:
+        elif row.get("STP_PRS_1") is not None:
             row["StandpipePressure"] = row["STP_PRS_1"]
-        elif "StandpipePressure" not in row:
-            if "Standpipe Pressure 1" in row and row["Standpipe Pressure 1"] is not None:
-                row["StandpipePressure"] = row["Standpipe Pressure 1"]
+        elif "StandpipePressure" not in row and row.get("Standpipe Pressure 1") is not None:
+            row["StandpipePressure"] = row["Standpipe Pressure 1"]
+            
+        # Map Modbus TWINSTOP parameters for UI compatibility
+        if row.get("Point1Capture") is not None:
+            row["C1"] = row["Point1Capture"]
+        if row.get("Point2Capture") is not None:
+            row["C2"] = row["Point2Capture"]
+        if row.get("Point3Capture") is not None:
+            row["C3"] = row["Point3Capture"]
+        if row.get("LiveEncounterCount") is not None:
+            row["EDMSCOUNT"] = row["LiveEncounterCount"]
+        
+        if row.get("BH") is not None:
+            row["BLOCK_HEIGHT"] = row["BH"]
+            row["BLOCK_POS"] = row["BH"]
     
     if isinstance(data, dict):
         map_and_convert(data)
@@ -119,63 +136,96 @@ def convert_units_to_metric(data):
             
     return data
 
-@app.get("/rig/latest")
+# ── Rig Data Router (with /api prefix for frontend compatibility) ──
+from fastapi import APIRouter
+rig_router = APIRouter(prefix="/rig", tags=["Rig Telemetry"])
+
+@rig_router.get("/latest")
 async def get_latest_data():
-    """Get latest drilling values from InfluxDB."""
+    """Get latest drilling values from InfluxDB (WITSML + Modbus Sensors)."""
     from services.influx import InfluxWrapper
     from services.analytics import engine
     
-    # If WITSML is disconnected in live mode, return an empty-like object 
-    # so the frontend resets values to 0 instead of freezing on old data.
-    if LIVE_MODE and not engine.is_witsml_connected:
-        return {"_WITSML_STATUS": "Disconnected"}
-        
     influx = InfluxWrapper()
-    data = influx.query_latest("realtime_drilling")
     
-    if not data:
-        return {"error": "No live data available"}
-        
-    # Check for stale data (older than 5 minutes)
-    if "_time" in data:
-        import pandas as pd
-        from datetime import datetime, timezone
-        try:
-            data_time = pd.to_datetime(data["_time"])
-            if data_time.tzinfo is None:
-                data_time = data_time.tz_localize('UTC')
-            now = datetime.now(timezone.utc)
-            if (now - data_time).total_seconds() > 300:
-                if LIVE_MODE:
-                    return {"_WITSML_STATUS": "Stale"}
-        except Exception:
-            pass
-            
-    return convert_units_to_metric(data)
+    # 1. Get WITSML Data (Measurement: realtime_drilling)
+    witsml_data = {}
+    if not (LIVE_MODE and not engine.is_witsml_connected):
+        witsml_data = influx.query_latest("realtime_drilling") or {}
+    
+    # 2. Get Modbus Sensor Data (Measurement: modbus)
+    sensor_data = influx.query_sensors_latest("modbus") or {}
 
-@app.get("/rig/history")
+    # 3. Merge Data
+    merged_data = {**sensor_data, **witsml_data}
+    
+    if not merged_data:
+        return {"error": "No data available from WITSML or Sensors"}
+        
+    return convert_units_to_metric(merged_data)
+
+@rig_router.get("/history")
 async def get_history(range: str = "-5m"):
     """Get time-series drilling data for charts."""
     from services.influx import InfluxWrapper
     influx = InfluxWrapper()
-    rows = influx.query_range(range, "realtime_drilling")
-    return convert_units_to_metric(rows)
+    
+    # Query both WITSML and Modbus measurements
+    witsml_rows = influx.query_range(range, "realtime_drilling")
+    modbus_rows = influx.query_range(range, "modbus")
+    
+    # Merge: combine both sources
+    all_rows = witsml_rows + modbus_rows
+    
+    # If both have data, merge by timestamp
+    if witsml_rows and modbus_rows:
+        merged = {}
+        for row in all_rows:
+            t = row.get("time", "")
+            if t not in merged:
+                merged[t] = row
+            else:
+                merged[t].update(row)
+        all_rows = sorted(merged.values(), key=lambda r: r.get("time", ""))
+    
+    return convert_units_to_metric(all_rows)
 
-@app.get("/rig/history-range")
-async def get_history_range(start: str, stop: str):
-    """Get time-series drilling data between two absolute ISO timestamps."""
+@rig_router.get("/history-range")
+async def get_history_range(start: str = "", stop: str = ""):
+    """Get time-series data between two absolute ISO timestamps."""
     from services.influx import InfluxWrapper
     influx = InfluxWrapper()
-    rows = influx.query_custom_range(start, stop, "realtime_drilling")
-    return convert_units_to_metric(rows)
+    
+    if not start or not stop:
+        return []
+    
+    # Query both measurements
+    witsml_rows = influx.query_custom_range(start, stop, "realtime_drilling")
+    modbus_rows = influx.query_custom_range(start, stop, "modbus")
+    
+    all_rows = witsml_rows + modbus_rows
+    
+    if witsml_rows and modbus_rows:
+        merged = {}
+        for row in all_rows:
+            t = row.get("time", "")
+            if t not in merged:
+                merged[t] = row
+            else:
+                merged[t].update(row)
+        all_rows = sorted(merged.values(), key=lambda r: r.get("time", ""))
+    
+    return convert_units_to_metric(all_rows)
 
-@app.get("/rig/sensors")
+@rig_router.get("/sensors")
 async def get_sensors():
     """Get latest equipment sensor readings from Telegraf."""
     from services.influx import InfluxWrapper
     influx = InfluxWrapper()
-    data = influx.query_sensors_latest("rig_sensors")
+    data = influx.query_sensors_latest("modbus")
     return data
+
+app.include_router(rig_router)
 
 @app.get("/health")
 def health_check():

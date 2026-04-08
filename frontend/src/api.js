@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
     baseURL: '/api', // Vite proxy handles redirection to http://localhost:8000
-    timeout: 2000,  // Reduced to 2 seconds for faster failure detection
+    timeout: 10000, // Increased to 10 seconds for stable PLC write operations
 });
 
 // Request interceptor to add Token
@@ -163,6 +163,15 @@ export const getModbusDevices = async () => {
     return response.data;
 }
 
+export const getModbusStatus = async () => {
+    try {
+        const response = await api.get('/modbus-config/status');
+        return response.data;
+    } catch {
+        return {};
+    }
+}
+
 export const createModbusDevice = async (data) => {
     const response = await api.post('/modbus-config/', data);
     return response.data;
@@ -185,6 +194,22 @@ export const toggleModbusDevice = async (id) => {
 
 export const bulkUpdateRegisters = async (deviceId, registers) => {
     const response = await api.put(`/modbus-config/${deviceId}/registers/bulk`, registers);
+    return response.data;
+}
+
+// ── Modbus Control ──────────────────────────────────────────
+export const writeModbusCoil = async (deviceId, address, value) => {
+    const response = await api.post('/modbus/write-coil', { device_id: deviceId, address, value });
+    return response.data;
+}
+
+export const writeModbusRegister = async (deviceId, address, value) => {
+    const response = await api.post('/modbus/write-register', { device_id: deviceId, address, value });
+    return response.data;
+}
+
+export const writeModbusFloat = async (deviceId, address, value) => {
+    const response = await api.post('/modbus/write-float', { device_id: deviceId, address, value });
     return response.data;
 }
 

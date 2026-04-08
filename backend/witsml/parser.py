@@ -36,7 +36,10 @@ class WitsmlParser:
                 for row in log_data:
                     # WITSML 1.4.1.1 usually comma separated
                     values = row.split(',')
-                    row_dict = {k: v for k, v in zip(mnemonics, values)}
+                    # WITSML rows can be sparse. Pad missing values with empty strings.
+                    row_dict = {}
+                    for i, mnemonic in enumerate(mnemonics):
+                        row_dict[mnemonic] = values[i] if i < len(values) else ""
                     all_data.append(row_dict)
 
             df = pd.DataFrame(all_data)

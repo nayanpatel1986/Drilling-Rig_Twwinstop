@@ -1,0 +1,4 @@
+Row count: 212
+First row keys: ['time', 'BLOCKHEIGHT', 'Brake_Pressure_Setpoint', 'Brake_Release', 'C1', 'C2', 'C3', 'EDMSCOUNT', 'EStop_Reset', 'LiveEncounterCount', 'Point1Capture', 'Point2Capture', 'Point3Capture', 'Safety_Override', 'Target_Torque']
+First row: {'time': '2026-04-01T08:22:44+00:00', 'BLOCKHEIGHT': 0.0, 'Brake_Pressure_Setpoint': 0.0, 'Brake_Release': 0.0, 'C1': 0.0, 'C2': 0.0, 'C3': 0.0, 'EDMSCOUNT': 0.0, 'EStop_Reset': 0.0, 'LiveEncounterCount': 366592.0, 'Point1Capture': 104448.01, 'Point2Capture': 262144.0, 'Point3Capture': 442368.0, 'Safety_Override': 0.0, 'Target_Torque': 0.0}
+Second row: {'time': '2026-04-01T08:22:45+00:00', 'BLOCKHEIGHT': 0.0, 'Brake_Pressure_Setpoint': 0.0, 'Brake_Release': 0.0, 'C1': 0.0, 'C2': 0.0, 'C3': 0.0, 'EDMSCOUNT': 0.0, 'EStop_Reset': 0.0, 'LiveEncounterCount': 366592.0, 'Point1Capture': 104448.01, 'Point2Capture': 262144.0, 'Point3Capture': 442368.0, 'Safety_Override': 0.0, 'Target_Torque': 0.0}

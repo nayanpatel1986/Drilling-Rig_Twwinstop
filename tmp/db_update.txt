@@ -1,0 +1,2 @@
+﻿[('Point1Capture', 440, 'DCBA'), ('Point2Capture', 456, 'DCBA'), ('Point3Capture', 472, 'DCBA'), ('LiveEncounterCount', 408, 'DCBA')]
+Updated: [('Point1Capture', 'CDAB'), ('Point2Capture', 'CDAB'), ('Point3Capture', 'CDAB'), ('LiveEncounterCount', 'CDAB')]

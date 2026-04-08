@@ -1,0 +1,3 @@
+Row count: 408
+First row keys: ['time', 'result', 'table', 'device_name', 'device_type', 'host', 'name', 'rig_id', 'slave_id', 'type', 'Brake_Release', 'EStop_Reset', 'Safety_Override']
+First row: {'time': '2026-04-01T08:15:00+00:00', 'result': '_result', 'table': 0.0, 'device_name': 'TWINSTOP', 'device_type': 'twinstop', 'host': 'rig-telegraf', 'name': 'rig_sensors', 'rig_id': 'E-1400-1', 'slave_id': '1', 'type': 'coil', 'Brake_Release': 0.0, 'EStop_Reset': 0.0, 'Safety_Override': 0.0}

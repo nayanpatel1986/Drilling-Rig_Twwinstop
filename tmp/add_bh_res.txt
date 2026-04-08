@@ -1,0 +1,9 @@
+﻿Registers for device 1:
+- Point1Capture: address=440, byte_order=CDAB
+- Point2Capture: address=456, byte_order=CDAB
+- Point3Capture: address=472, byte_order=CDAB
+- LiveEncounterCount: address=408, byte_order=CDAB
+Added BH register to DB!
+TELEGRAF SYNC: Config written to /telegraf-config/telegraf.conf
+TELEGRAF SYNC: Config also written to /host-telegraf-config/telegraf.conf
+TELEGRAF SYNC: Container restarted successfully.

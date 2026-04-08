@@ -149,7 +149,8 @@ class ModbusRegister(Base):
     id = Column(Integer, primary_key=True, index=True)
     device_id = Column(Integer, ForeignKey("modbus_devices.id", ondelete="CASCADE"), index=True)
     field_name = Column(String)                           # e.g. "RPM", "OilPressure", "SPM"
-    register_type = Column(String, default="holding")     # holding, input, coil
+    register_type = Column(String, default="holding")     # holding, input, coil, discrete
+    function_code = Column(Integer, nullable=True)        # 01, 02, 03, 04, 05, 06, 15, 16
     address = Column(Integer)                             # Modbus register address
     data_type = Column(String, default="FLOAT32")         # UINT16, INT16, FLOAT32, etc.
     byte_order = Column(String, default="ABCD")           # ABCD, DCBA, BADC, CDAB

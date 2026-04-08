@@ -1,0 +1,37 @@
+INFO:     172.19.0.5:49536 - "GET /rig/history?range=-5m HTTP/1.1" 200 OK
+INFO:     172.19.0.5:49538 - "GET /rig/latest HTTP/1.1" 200 OK
+INFO:     172.19.0.5:49554 - "GET /rig/latest HTTP/1.1" 200 OK
+INFO:     172.19.0.5:49562 - "GET /rig/history?range=-5m HTTP/1.1" 200 OK
+INFO:     172.19.0.5:49566 - "GET /rig/latest HTTP/1.1" 200 OK
+INFO:     172.19.0.5:38880 - "GET /rig/history?range=-5m HTTP/1.1" 200 OK
+INFO:     172.19.0.5:38886 - "GET /rig/latest HTTP/1.1" 200 OK
+INFO:     172.19.0.5:38890 - "GET /rig/latest HTTP/1.1" 200 OK
+INFO:     172.19.0.5:38894 - "GET /rig/history?range=-5m HTTP/1.1" 200 OK
+INFO:     172.19.0.5:38910 - "GET /rig/latest HTTP/1.1" 200 OK
+INFO:     172.19.0.5:38916 - "GET /rig/history?range=-5m HTTP/1.1" 200 OK
+INFO:     172.19.0.5:38920 - "GET /rig/latest HTTP/1.1" 200 OK
+docker : INFO:     
+('172.19.0.5', 49542) - 
+"WebSocket /ws/realtime" 
+[accepted]
+At line:1 char:25
++ ... Sleep -Seconds 8; 
+docker logs 
+drillbit_backend --tail 
+15 2>&1 | Out-F ...
++                       ~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (I  
+  NFO:     ('172...ime"   
+  [accepted]:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+INFO:services.websocket_se
+rver:WebSocket connected: 
+client_1 (Total active: 1)
+INFO:     connection open

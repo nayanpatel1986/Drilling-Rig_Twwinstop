@@ -51,16 +51,19 @@ def generate_telegraf_conf(db) -> str:
     
     # ── Agent section (static) ──
     conf = """[agent]
-  interval = "1s"
+  interval = "500ms"
   round_interval = true
   metric_batch_size = 1000
   metric_buffer_limit = 10000
   collection_jitter = "0s"
-  flush_interval = "10s"
+  flush_interval = "500ms"
   flush_jitter = "0s"
   precision = ""
-  hostname = "rig-telegraf"
+  hostname = "modbus"
   omit_hostname = false
+
+[[inputs.internal]]
+  collect_memstats = true
 
 [[outputs.influxdb_v2]]
   urls = ["http://influxdb:8086"]
@@ -82,11 +85,11 @@ def generate_telegraf_conf(db) -> str:
             conf += f"# Skipped '{device.name}': no IP address configured\n\n"
             continue
         
-        # Group registers by type
-        holding_regs = [r for r in device.registers if r.register_type == "holding"]
-        input_regs = [r for r in device.registers if r.register_type == "input"]
-        coil_regs = [r for r in device.registers if r.register_type == "coil"]
-        discrete_regs = [r for r in device.registers if r.register_type == "discrete"]
+        # Group registers by type or function code
+        holding_regs = [r for r in device.registers if r.function_code == 3 or (r.function_code is None and r.register_type == "holding")]
+        input_regs = [r for r in device.registers if r.function_code == 4 or (r.function_code is None and r.register_type == "input")]
+        coil_regs = [r for r in device.registers if r.function_code == 1 or (r.function_code is None and r.register_type == "coil")]
+        discrete_regs = [r for r in device.registers if r.function_code == 2 or (r.function_code is None and r.register_type == "discrete")]
         
         if not device.registers:
             conf += f"# Skipped '{device.name}': no registers configured\n\n"
@@ -98,6 +101,7 @@ def generate_telegraf_conf(db) -> str:
         conf += f'  name = "{device.measurement_name}"\n'
         conf += f'  slave_id = {device.slave_id}\n'
         conf += f'  timeout = "{device.timeout}"\n'
+        conf += f'  name_override = "modbus"\n'
         conf += f'  configuration_type = "register"\n'
         
         if device.protocol == "tcp":

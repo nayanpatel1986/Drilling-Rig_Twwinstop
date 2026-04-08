@@ -1,41 +1,14 @@
 import pandas as pd
 import time
 from typing import Optional
-from requests import Session
+from requests import Session as ReqSession
 from requests.auth import HTTPBasicAuth
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 from witsml.parser import WitsmlParser
 from witsml.simulator import WitsmlSimulator
 
-# SOAP envelope template for WMLS_GetFromStore
-# Using raw HTTP POST instead of Zeep to eliminate WSDL/schema overhead
-SOAP_ENVELOPE = """<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
-               xmlns:ns="http://www.witsml.org/wsdl/120">
-  <soap:Body>
-    <ns:WMLS_GetFromStore>
-      <ns:WMLtypeIn>{wml_type}</ns:WMLtypeIn>
-      <ns:QueryIn>{query_in}</ns:QueryIn>
-      <ns:OptionsIn>{options_in}</ns:OptionsIn>
-      <ns:CapabilitiesIn></ns:CapabilitiesIn>
-    </ns:WMLS_GetFromStore>
-  </soap:Body>
-</soap:Envelope>"""
-
-# Timeouts: (connect_timeout, read_timeout) in seconds
-# - Connect: 3s to detect dead server fast
-# - Read: 12s to allow server time for data response
-TIMEOUT = (3, 12)
-
-
-def _escape_xml(s):
-    """Escape special XML characters in query strings."""
-    return s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
-
 
 class WitsmlClient:
-    """WITSML 1.x Client using direct HTTP POST for maximum speed."""
+    """WITSML 1.x Client using Zeep (WSDL) for server compatibility."""
     
     def __init__(self, url: str, username: Optional[str] = None, password: Optional[str] = None, version: str = "1.4.1.1"):
         self.url = url
@@ -45,19 +18,22 @@ class WitsmlClient:
         self.simulator = WitsmlSimulator()
         self._connected = False
         self._last_time_str = None
-        
-        # Persistent HTTP session with connection pooling (keep-alive)
-        # Disable retries so we fail fast on dead servers
-        self.session = Session()
-        adapter = HTTPAdapter(max_retries=Retry(total=0))
-        self.session.mount('http://', adapter)
-        self.session.mount('https://', adapter)
-        if self.username:
-            self.session.auth = HTTPBasicAuth(self.username, self.password)
-        self.session.headers.update({
-            'Content-Type': 'text/xml; charset=utf-8',
-            'SOAPAction': '"http://www.witsml.org/action/120/Store.WMLS_GetFromStore"',
-        })
+        self._zeep_client = None
+    
+    def _get_zeep_client(self):
+        """Create or return a cached Zeep SOAP client."""
+        if self._zeep_client is None:
+            from zeep import Client as ZeepClient
+            from zeep.transports import Transport
+
+            session = ReqSession()
+            if self.username:
+                session.auth = HTTPBasicAuth(self.username, self.password)
+            wsdl_url = self.url + '?WSDL'
+            transport = Transport(session=session, timeout=12)
+            self._zeep_client = ZeepClient(wsdl_url, transport=transport)
+            print(f"WITSML: Zeep client created for {self.url}", flush=True)
+        return self._zeep_client
     
     @property
     def is_connected(self):
@@ -65,43 +41,64 @@ class WitsmlClient:
         return self._connected
 
     def _soap_call(self, wml_type, query_xml, options=""):
-        """Execute a raw SOAP POST to the WITSML server. Returns (result_code, xml_out, supp_msg)."""
-        escaped_query = _escape_xml(query_xml)
-        body = SOAP_ENVELOPE.format(
-            wml_type=wml_type,
-            query_in=escaped_query,
-            options_in=options,
-        )
-        
+        """Execute WMLS_GetFromStore via Zeep. Returns (result_code, xml_out, supp_msg)."""
         t0 = time.time()
-        resp = self.session.post(self.url, data=body.encode('utf-8'), timeout=TIMEOUT)
+        client = self._get_zeep_client()
+        result = client.service.WMLS_GetFromStore(
+            WMLtypeIn=wml_type,
+            QueryIn=query_xml,
+            OptionsIn=options,
+            CapabilitiesIn='',
+        )
         elapsed = time.time() - t0
+
+        # Zeep response structure varies by server — handle multiple formats
+        result_code = 0
+        xml_out = ""
+        supp_msg = ""
         
-        resp.raise_for_status()
-        
-        # Parse the SOAP response with lxml (faster than ElementTree)
-        from lxml import etree
-        root = etree.fromstring(resp.content)
-        
-        # Extract the three return values from the SOAP body
-        ns = {
-            'soap': 'http://schemas.xmlsoap.org/soap/envelope/',
-            'ns': 'http://www.witsml.org/wsdl/120',
-        }
-        
-        result_node = root.find('.//ns:WMLS_GetFromStoreResponse/ns:Result', ns)
-        xml_out_node = root.find('.//ns:WMLS_GetFromStoreResponse/ns:XMLout', ns)
-        supp_msg_node = root.find('.//ns:WMLS_GetFromStoreResponse/ns:SuppMsgOut', ns)
-        
-        result_code = int(result_node.text) if result_node is not None and result_node.text else 0
-        xml_out = xml_out_node.text if xml_out_node is not None else ""
-        supp_msg = supp_msg_node.text if supp_msg_node is not None else ""
-        
-        print(f"WITSML SOAP call completed in {elapsed:.1f}s (result={result_code})", flush=True)
+        try:
+            # Debug: log the response type and available attributes
+            print(f"WITSML Zeep response type: {type(result).__name__}", flush=True)
+            
+            if hasattr(result, 'Result'):
+                result_code = int(result.Result) if result.Result is not None else 0
+                xml_out = result.XMLout or ""
+                supp_msg = result.SuppMsgOut or ""
+            elif hasattr(result, 'result'):
+                result_code = int(result.result) if result.result is not None else 0
+                xml_out = getattr(result, 'xmlOut', '') or getattr(result, 'XMLout', '') or ""
+                supp_msg = getattr(result, 'suppMsgOut', '') or getattr(result, 'SuppMsgOut', '') or ""
+            elif isinstance(result, (list, tuple)):
+                # Some servers return a tuple/list: (result_code, xml_out, supp_msg)
+                result_code = int(result[0]) if result[0] is not None else 0
+                xml_out = str(result[1]) if len(result) > 1 and result[1] else ""
+                supp_msg = str(result[2]) if len(result) > 2 and result[2] else ""
+            elif isinstance(result, dict):
+                result_code = int(result.get('Result', result.get('result', 0)))
+                xml_out = result.get('XMLout', result.get('xmlOut', '')) or ""
+                supp_msg = result.get('SuppMsgOut', result.get('suppMsgOut', '')) or ""
+            else:
+                # Last resort: try to discover attributes
+                attrs = [a for a in dir(result) if not a.startswith('_')]
+                print(f"WITSML Zeep response attrs: {attrs}", flush=True)
+                for attr in attrs:
+                    val = getattr(result, attr, None)
+                    attr_lower = attr.lower()
+                    if 'result' == attr_lower and not callable(val):
+                        result_code = int(val) if val is not None else 0
+                    elif 'xmlout' == attr_lower and not callable(val):
+                        xml_out = str(val) if val else ""
+                    elif 'suppmsgout' == attr_lower and not callable(val):
+                        supp_msg = str(val) if val else ""
+        except Exception as parse_err:
+            print(f"WITSML: Error parsing Zeep response: {parse_err}. Raw result: {result}", flush=True)
+
+        print(f"WITSML Zeep call completed in {elapsed:.1f}s (result={result_code}, xml_len={len(xml_out)})", flush=True)
         return result_code, xml_out, supp_msg
         
-    def get_latest_log_data(self, well_uid: str, wellbore_uid: str, log_uid: str) -> pd.DataFrame:
-        """Fetches the last data row from a WITSML log using direct HTTP POST."""
+    def get_latest_log_data(self, well_uid: str, wellbore_uid: str, log_uid: str, mnemonics: list = None) -> pd.DataFrame:
+        """Fetches the last data row from a WITSML log."""
         if not self.url:
             return pd.DataFrame()
         
@@ -133,19 +130,31 @@ class WitsmlClient:
                 print(f"WITSML: Failed to get header end time: {e}", flush=True)
                 self._last_time_str = None
                 
-        print("Polling WITSML: {} Well:{} Log:{} Since:{}".format(
-            self.url, well_uid, log_uid, self._last_time_str or "Start"), flush=True)
+        print("Polling WITSML: {} Well:{} Wellbore:{} Log:{} Since:{}".format(
+            self.url, well_uid, wellbore_uid, log_uid, self._last_time_str or "Start"), flush=True)
             
         # Build the WITSML query XML
+        curve_info_xml = ""
+        if mnemonics:
+            # We always want RIGTIME or DATE/TIME to correlate data, though WITSML usually returns it as the index curve anyway
+            if 'RIGTIME' not in [m.upper() for m in mnemonics]:
+                curve_info_xml += '<logCurveInfo><mnemonic>RIGTIME</mnemonic></logCurveInfo>'
+            for m in mnemonics:
+                curve_info_xml += f'<logCurveInfo><mnemonic>{m}</mnemonic></logCurveInfo>'
+                
         if self._last_time_str:
-            query = '<logs xmlns="http://www.witsml.org/schemas/131" version="1.3.1"><log uidWell="{}" uidWellbore="{}" uid="{}"><startDateTimeIndex>{}</startDateTimeIndex><logData><data/></logData></log></logs>'.format(
-                well_uid, wellbore_uid, log_uid, self._last_time_str)
+            query = '<logs xmlns="http://www.witsml.org/schemas/131" version="1.3.1"><log uidWell="{}" uidWellbore="{}" uid="{}"><startDateTimeIndex>{}</startDateTimeIndex>{}<logData><data/></logData></log></logs>'.format(
+                well_uid, wellbore_uid, log_uid, self._last_time_str, curve_info_xml)
         else:
-            query = '<logs xmlns="http://www.witsml.org/schemas/131" version="1.3.1"><log uidWell="{}" uidWellbore="{}" uid="{}"><logData><data/></logData></log></logs>'.format(
-                well_uid, wellbore_uid, log_uid)
+            query = '<logs xmlns="http://www.witsml.org/schemas/131" version="1.3.1"><log uidWell="{}" uidWellbore="{}" uid="{}">{}<logData><data/></logData></log></logs>'.format(
+                well_uid, wellbore_uid, log_uid, curve_info_xml)
         
         try:
-            result_code, xml_out, supp_msg = self._soap_call('log', query, 'requestLatestValues=1')
+            # requestLatestValues is extremely slow on NOV servers (> 200 seconds).
+            # If we know the start time, just request everything after it.
+            # returnElements=data-only speeds up the server processing by ~40%
+            options = 'returnElements=data-only' if self._last_time_str else 'requestLatestValues=1'
+            result_code, xml_out, supp_msg = self._soap_call('log', query, options)
             
             self._connected = True
             
@@ -185,5 +194,6 @@ class WitsmlClient:
                 
         except Exception as e:
             self._connected = False
+            self._zeep_client = None  # Reset client so it reconnects next time
             print("WITSML Exception: {}".format(e), flush=True)
             return pd.DataFrame()

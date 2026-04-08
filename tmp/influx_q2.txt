@@ -1,0 +1,30 @@
+﻿docker : Error: failed to 
+execute query: 400 Bad 
+Request: error 
+@1:84-1:90: undefined 
+identifier modbus
+At line:1 char:1
++ docker exec 
+drillbit_influx influx 
+query "from(bucket: 
+""rig_data"")  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (E  
+  rror: failed t...enti   
+ fier modbus:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+
+error @1:112-1:120: 
+undefined identifier 
+TWINSTOP
+
+error @1:14-1:22: 
+undefined identifier 
+rig_data

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getUsers, registerUser, getWitsmlConfigs, createWitsmlConfig, updateWitsmlConfig, activateWitsmlConfig, deleteWitsmlConfig, bulkUpdateMappings, getModbusDevices, createModbusDevice, updateModbusDevice, deleteModbusDevice, toggleModbusDevice, bulkUpdateRegisters, testWitsmlConnection, browseWitsmlWells, browseWitsmlWellbores, browseWitsmlLogs, getRigData, getHealth, getActiveWell, createWell } from '../api';
-import { User, Plus, Shield, ShieldAlert, Server, Trash2, Edit3, Power, CheckCircle, XCircle, ChevronDown, ChevronRight, Save, RotateCcw, ArrowRightLeft, Cpu, Wifi, WifiOff, LayoutPanelTop, Search, Loader2 } from 'lucide-react';
+import { getUsers, registerUser, getWitsmlConfigs, createWitsmlConfig, updateWitsmlConfig, activateWitsmlConfig, deleteWitsmlConfig, bulkUpdateMappings, getModbusDevices, createModbusDevice, updateModbusDevice, deleteModbusDevice, toggleModbusDevice, bulkUpdateRegisters, testWitsmlConnection, browseWitsmlWells, browseWitsmlWellbores, browseWitsmlLogs, getRigData, getHealth, getActiveWell, createWell, endWell, getModbusStatus } from '../api';
+import { User, Plus, Shield, ShieldAlert, Server, Trash2, Edit3, Power, CheckCircle, XCircle, ChevronDown, ChevronRight, Save, RotateCcw, ArrowRightLeft, Cpu, Wifi, WifiOff, LayoutPanelTop, Search, Loader2, StopCircle } from 'lucide-react';
 
 export default function Users() {
     const [activeTab, setActiveTab] = useState('users');
@@ -86,6 +86,19 @@ function WellManagementTab() {
         }
     };
 
+    const handleEnd = async () => {
+        if (!activeWell) return;
+        if (confirm(`Are you sure you want to end the current active well '${activeWell.name}'?`)) {
+            try {
+                await endWell(activeWell.id);
+                fetchWell();
+                alert("Well ended successfully.");
+            } catch (err) {
+                alert("Failed to end the well.");
+            }
+        }
+    };
+
     return (
         <div className="card bg-gray-800/40 border border-white/5 rounded-xl p-6">
             <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
@@ -93,10 +106,21 @@ function WellManagementTab() {
             </h2>
 
             {activeWell ? (
-                <div className="bg-blue-500/10 border border-blue-500/20 text-blue-400 p-4 rounded-lg mb-4">
-                    <p className="font-semibold text-sm">A well is currently active.</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                        You cannot start a new well until the current active well ({activeWell.name}) is ended from the top navigation bar.
+                <div className="bg-blue-500/10 border border-blue-500/20 text-blue-400 p-6 rounded-lg mb-4 flex flex-col items-center text-center">
+                    <CheckCircle size={32} className="mb-3 text-green-500" />
+                    <p className="font-bold text-lg mb-1">A well is currently active: <span className="text-white">{activeWell.name}</span></p>
+                    <p className="text-xs text-gray-400 mb-6 font-medium uppercase tracking-widest">
+                        API: {activeWell.api_number}
+                    </p>
+                    <button 
+                        onClick={handleEnd}
+                        className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-xl font-black text-sm transition-all shadow-lg shadow-red-500/20 active:scale-95"
+                    >
+                        <StopCircle size={18} /> END ACTIVE WELL
+                    </button>
+                    <p className="text-[10px] text-gray-500 mt-4 leading-relaxed">
+                        Ending the active well will finalize current data logging. <br/>
+                        You can start a new well immediately after ending the current one.
                     </p>
                 </div>
             ) : (
@@ -389,17 +413,63 @@ function WitsmlTab() {
     const handleSelectWellbore = async (uid) => {
         setForm(f => ({ ...f, wellbore_uid: uid, log_uid: '' }));
         setBrowseLogs([]);
-        if (!uid || !form.well_uid) return;
+        setBrowseError('');
+        if (!uid) return;
+        // Use well_uid from form state; fallback should not happen but guard anyway
+        const currentWellUid = form.well_uid;
+        if (!currentWellUid) {
+            console.warn('handleSelectWellbore: well_uid is empty, cannot browse logs');
+            setBrowseError('Well UID is not set. Please select a well first.');
+            return;
+        }
         setBrowseLoading(true);
+        console.log(`Browsing logs for well=${currentWellUid} wellbore=${uid}`);
         try {
-            const res = await browseWitsmlLogs({ ...getServerCredentials(), well_uid: form.well_uid, wellbore_uid: uid });
-            if (res.status === 'success') setBrowseLogs(res.logs);
-        } catch { }
+            const res = await browseWitsmlLogs({ ...getServerCredentials(), well_uid: currentWellUid, wellbore_uid: uid });
+            console.log('Browse logs response:', res);
+            if (res.status === 'success' && res.logs && res.logs.length > 0) {
+                setBrowseLogs(res.logs);
+            } else if (res.status === 'success' && (!res.logs || res.logs.length === 0)) {
+                setBrowseError('No logs found for this wellbore. You can type the Log UID manually.');
+            } else {
+                setBrowseError(res.message || 'Failed to browse logs.');
+            }
+        } catch (e) {
+            console.error('Browse logs error:', e);
+            setBrowseError('Failed to browse logs: ' + (e?.message || 'Network error'));
+        }
         finally { setBrowseLoading(false); }
     };
 
     const handleSelectLog = (uid) => {
         setForm(f => ({ ...f, log_uid: uid }));
+    };
+
+    const handleBrowseLogs = async () => {
+        if (!form.well_uid || !form.wellbore_uid) {
+            setBrowseError('Select a Well and Wellbore first before browsing logs.');
+            return;
+        }
+        setBrowseLoading(true);
+        setBrowseError('');
+        setBrowseLogs([]);
+        console.log(`Manual browse logs: well=${form.well_uid} wellbore=${form.wellbore_uid}`);
+        try {
+            const res = await browseWitsmlLogs({ ...getServerCredentials(), well_uid: form.well_uid, wellbore_uid: form.wellbore_uid });
+            console.log('Browse logs response:', res);
+            if (res.status === 'success' && res.logs && res.logs.length > 0) {
+                setBrowseLogs(res.logs);
+            } else if (res.status === 'success' && (!res.logs || res.logs.length === 0)) {
+                setBrowseError('No logs found for this wellbore. You can type the Log UID manually.');
+            } else {
+                setBrowseError(res.message || 'Failed to browse logs.');
+            }
+        } catch (e) {
+            console.error('Browse logs error:', e);
+            setBrowseError('Failed to browse logs: ' + (e?.message || 'Network error'));
+        } finally {
+            setBrowseLoading(false);
+        }
     };
 
     return (
@@ -526,14 +596,14 @@ function WitsmlTab() {
                                             <input placeholder="Wellbore UID" className={inputMonoClass} value={form.wellbore_uid} onChange={set('wellbore_uid')} />
                                         )}
                                     </FormField>
-                                    <FormField label="Log UID">
+                                    <FormField label={<span className="flex items-center gap-2">Log UID <button type="button" onClick={handleBrowseLogs} disabled={browseLoading || !form.well_uid || !form.wellbore_uid} className="text-[10px] px-2 py-0.5 bg-cyan-600/20 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-600/30 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed">{browseLoading ? '...' : 'Browse Logs'}</button></span>}>
                                         {browseLogs.length > 0 ? (
                                             <select className={inputMonoClass} value={form.log_uid} onChange={e => handleSelectLog(e.target.value)}>
                                                 <option value="">— Select Log —</option>
                                                 {browseLogs.map(l => <option key={l.uid} value={l.uid}>{l.name}</option>)}
                                             </select>
                                         ) : (
-                                            <input placeholder="Log UID" className={inputMonoClass} value={form.log_uid} onChange={set('log_uid')} />
+                                            <input placeholder="Log UID (or click Browse Logs)" className={inputMonoClass} value={form.log_uid} onChange={set('log_uid')} />
                                         )}
                                     </FormField>
                                 </div>
@@ -742,7 +812,9 @@ function InfoCell({ label, value, mono }) {
 
 // ─── Modbus Configuration Tab ────────────────────────────────
 function ModbusTab() {
+    console.log("ModbusTab loaded - v1.0.1 (TwinStop added)");
     const [devices, setDevices] = useState([]);
+    const [statusMap, setStatusMap] = useState({});
     const [showAdd, setShowAdd] = useState(false);
     const [expandedReg, setExpandedReg] = useState(null);
     const [editingDevice, setEditingDevice] = useState(null);
@@ -761,6 +833,16 @@ function ModbusTab() {
         } catch { }
     };
     useEffect(() => { fetchDevices(); }, []);
+
+    useEffect(() => {
+        const fetchStatus = async () => {
+            const data = await getModbusStatus();
+            setStatusMap(data || {});
+        };
+        fetchStatus();
+        const interval = setInterval(fetchStatus, 3000);
+        return () => clearInterval(interval);
+    }, []);
 
     const handleCreate = async (e) => {
         e.preventDefault();
@@ -803,13 +885,24 @@ function ModbusTab() {
 
     const updateReg = (devId, idx, field, value) => {
         const regs = [...(editRegs[devId] || [])];
-        regs[idx] = { ...regs[idx], [field]: value };
+        let updatedReg = { ...regs[idx], [field]: value };
+        
+        // Auto-update register_type based on function_code
+        if (field === 'function_code') {
+            const code = Number(value);
+            if ([1, 5, 15].includes(code)) updatedReg.register_type = 'coil';
+            else if (code === 2) updatedReg.register_type = 'discrete';
+            else if ([3, 6, 16].includes(code)) updatedReg.register_type = 'holding';
+            else if (code === 4) updatedReg.register_type = 'input';
+        }
+        
+        regs[idx] = updatedReg;
         setEditRegs({ ...editRegs, [devId]: regs });
     };
 
     const addReg = (devId) => {
         const regs = [...(editRegs[devId] || [])];
-        regs.push({ field_name: '', register_type: 'holding', address: 0, data_type: 'FLOAT32', byte_order: 'ABCD', scale: 1.0, unit: '' });
+        regs.push({ field_name: '', register_type: 'holding', function_code: 3, address: 0, data_type: 'FLOAT32', byte_order: 'ABCD', scale: 1.0, unit: '' });
         setEditRegs({ ...editRegs, [devId]: regs });
     };
 
@@ -827,8 +920,8 @@ function ModbusTab() {
     };
 
     const inputClass = 'bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white text-sm focus:border-cyan-500 focus:outline-none w-full';
-    const typeLabels = { engine: 'Engine', mudpump: 'Mud Pump', bop: 'BOP' };
-    const typeColors = { engine: 'text-orange-400 bg-orange-400/15', mudpump: 'text-blue-400 bg-blue-400/15', bop: 'text-red-400 bg-red-400/15' };
+    const typeLabels = { engine: 'Engine', mudpump: 'Mud Pump', bop: 'BOP', twinstop: 'TwinStop' };
+    const typeColors = { engine: 'text-orange-400 bg-orange-400/15', mudpump: 'text-blue-400 bg-blue-400/15', bop: 'text-red-400 bg-red-400/15', twinstop: 'text-cyan-400 bg-cyan-400/15' };
 
     return (
         <>
@@ -843,7 +936,7 @@ function ModbusTab() {
             {showAdd && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
                     <div className="bg-gray-800 p-6 rounded-xl w-[520px] border border-gray-700 shadow-2xl">
-                        <h2 className="text-xl font-bold mb-4">Add Modbus Device</h2>
+                        <h2 className="text-xl font-bold mb-4">Add Modbus Device (V2)</h2>
                         <form onSubmit={handleCreate} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -858,6 +951,7 @@ function ModbusTab() {
                                         <option value="engine">Engine</option>
                                         <option value="mudpump">Mud Pump</option>
                                         <option value="bop">BOP</option>
+                                        <option value="twinstop">TwinStop</option>
                                     </select>
                                 </div>
                             </div>
@@ -938,6 +1032,12 @@ function ModbusTab() {
                             </div>
 
                             <div className="flex items-center gap-2">
+                                {dev.is_enabled && statusMap[dev.id] && (
+                                    <span className={`flex items-center gap-1 text-[10px] font-black tracking-wider px-2.5 py-1 rounded-full ${statusMap[dev.id].connected ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-500 border border-red-500/30'}`}>
+                                        <div className={`w-1.5 h-1.5 rounded-full ${statusMap[dev.id].connected ? 'bg-green-400 animate-pulse' : 'bg-red-500'}`}></div>
+                                        {statusMap[dev.id].connected ? 'CONNECTED' : 'DISCONNECTED'}
+                                    </span>
+                                )}
                                 <span className={`flex items-center gap-1 text-xs font-bold ${dev.is_enabled ? 'text-green-400' : 'text-gray-500'
                                     }`}>
                                     {dev.is_enabled ? <Wifi size={14} /> : <WifiOff size={14} />}
@@ -1035,7 +1135,7 @@ function ModbusTab() {
                                         <thead>
                                             <tr className="text-gray-500 text-xs border-b border-white/10">
                                                 <th className="text-left p-2">Field Name</th>
-                                                <th className="text-left p-2">Type</th>
+                                                <th className="text-left p-2">Function</th>
                                                 <th className="text-left p-2">Address</th>
                                                 <th className="text-left p-2">Data Type</th>
                                                 <th className="text-left p-2">Byte Order</th>
@@ -1052,11 +1152,17 @@ function ModbusTab() {
                                                             value={reg.field_name} onChange={e => updateReg(dev.id, idx, 'field_name', e.target.value)} />
                                                     </td>
                                                     <td className="p-2">
-                                                        <select className="bg-gray-900 border border-gray-700 rounded px-1 py-1 text-xs text-white"
-                                                            value={reg.register_type} onChange={e => updateReg(dev.id, idx, 'register_type', e.target.value)}>
-                                                            <option value="holding">Holding</option>
-                                                            <option value="input">Input</option>
-                                                            <option value="coil">Coil</option>
+                                                        <select className="bg-gray-900 border border-gray-700 rounded px-1 py-1 text-[10px] text-white w-40"
+                                                            value={reg.function_code || (reg.register_type === 'input' ? 4 : (reg.register_type === 'coil' ? 1 : 3))} 
+                                                            onChange={e => updateReg(dev.id, idx, 'function_code', e.target.value)}>
+                                                            <option value={1}>01 Read Coils (0x)</option>
+                                                            <option value={2}>02 Read Discrete Inputs (1x)</option>
+                                                            <option value={3}>03 Read Holding Registers (4x)</option>
+                                                            <option value={4}>04 Read Input Registers (3x)</option>
+                                                            <option value={5}>05 Write Single Coil</option>
+                                                            <option value={6}>06 Write Single Register</option>
+                                                            <option value={15}>15 Write Multiple Coils</option>
+                                                            <option value={16}>16 Write Multiple Registers</option>
                                                         </select>
                                                     </td>
                                                     <td className="p-2">

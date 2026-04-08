@@ -1,0 +1,20 @@
+2026-04-06T11:07:21Z W! [inputs.modbus] Collection took longer than expected; not complete after interval of 500ms
+2026-04-06T11:07:21Z E! [inputs.modbus] Error in plugin: dial tcp 192.168.1.11:502: i/o timeout
+2026-04-06T11:07:22Z W! [inputs.modbus] Collection took longer than expected; not complete after interval of 500ms
+2026-04-06T11:07:22Z W! [inputs.modbus] Collection took longer than expected; not complete after interval of 500ms
+2026-04-06T11:07:22Z E! [inputs.modbus] Error in plugin: dial tcp 192.168.1.11:502: i/o timeout
+2026-04-06T11:07:23Z W! [inputs.modbus] Collection took longer than expected; not complete after interval of 500ms
+2026-04-06T11:07:24Z W! [inputs.modbus] Collection took longer than expected; not complete after interval of 500ms
+2026-04-06T11:07:24Z E! [inputs.modbus] Error in plugin: dial tcp 192.168.1.11:502: i/o timeout
+2026-04-06T11:07:25Z W! [inputs.modbus] Collection took longer than expected; not complete after interval of 500ms
+2026-04-06T11:07:25Z W! [inputs.modbus] Collection took longer than expected; not complete after interval of 500ms
+2026-04-06T11:07:25Z E! [inputs.modbus] Error in plugin: dial tcp 192.168.1.11:502: i/o timeout
+2026-04-06T11:07:26Z W! [inputs.modbus] Collection took longer than expected; not complete after interval of 500ms
+2026-04-06T11:07:27Z W! [inputs.modbus] Collection took longer than expected; not complete after interval of 500ms
+2026-04-06T11:07:27Z E! [inputs.modbus] Error in plugin: dial tcp 192.168.1.11:502: i/o timeout
+2026-04-06T11:07:28Z W! [inputs.modbus] Collection took longer than expected; not complete after interval of 500ms
+2026-04-06T11:07:28Z W! [inputs.modbus] Collection took longer than expected; not complete after interval of 500ms
+2026-04-06T11:07:28Z E! [inputs.modbus] Error in plugin: dial tcp 192.168.1.11:502: i/o timeout
+2026-04-06T11:07:29Z W! [inputs.modbus] Collection took longer than expected; not complete after interval of 500ms
+2026-04-06T11:07:30Z W! [inputs.modbus] Collection took longer than expected; not complete after interval of 500ms
+2026-04-06T11:07:30Z E! [inputs.modbus] Error in plugin: dial tcp 192.168.1.11:502: i/o timeout

@@ -43,6 +43,23 @@ DEFAULT_REGISTERS = {
         {"field_name": "PipeRamStatus", "register_type": "coil", "address": 1, "data_type": "UINT16", "scale": 1.0, "unit": ""},
         {"field_name": "BlindRamStatus", "register_type": "coil", "address": 2, "data_type": "UINT16", "scale": 1.0, "unit": ""},
     ],
+    "twinstop": [
+        {"field_name": "H1", "register_type": "holding", "function_code": 3, "address": 448, "data_type": "FLOAT32", "scale": 1.0, "unit": "", "byte_order": "CDAB"},
+        {"field_name": "H2", "register_type": "holding", "function_code": 3, "address": 464, "data_type": "FLOAT32", "scale": 1.0, "unit": "", "byte_order": "CDAB"},
+        {"field_name": "H3", "register_type": "holding", "function_code": 3, "address": 480, "data_type": "FLOAT32", "scale": 1.0, "unit": "", "byte_order": "CDAB"},
+        {"field_name": "Cal_Reset", "register_type": "coil", "function_code": 5, "address": 483, "data_type": "UINT16", "scale": 1.0, "unit": ""},
+        {"field_name": "Set_Zero", "register_type": "coil", "function_code": 5, "address": 402, "data_type": "UINT16", "scale": 1.0, "unit": ""},
+        {"field_name": "Calibrate_At_Known_Height", "register_type": "coil", "function_code": 5, "address": 403, "data_type": "UINT16", "scale": 1.0, "unit": ""},
+        {"field_name": "Known_Height", "register_type": "holding", "function_code": 16, "address": 528, "data_type": "FLOAT32", "scale": 1.0, "unit": "ft"},
+        {"field_name": "Crownomatic", "register_type": "holding", "function_code": 3, "address": 496, "data_type": "FLOAT32", "scale": 1.0, "unit": "m", "byte_order": "CDAB"},
+        {"field_name": "Flooromatic", "register_type": "holding", "function_code": 3, "address": 504, "data_type": "FLOAT32", "scale": 1.0, "unit": "m", "byte_order": "CDAB"},
+        {"field_name": "AlarmOffset", "register_type": "holding", "function_code": 3, "address": 512, "data_type": "FLOAT32", "scale": 1.0, "unit": "m", "byte_order": "CDAB"},
+        {"field_name": "BH", "register_type": "holding", "function_code": 3, "address": 416, "data_type": "FLOAT32", "scale": 1.0, "unit": "m", "byte_order": "CDAB"},
+        {"field_name": "Point1Capture", "register_type": "holding", "function_code": 3, "address": 440, "data_type": "FLOAT32", "scale": 1.0, "unit": "", "byte_order": "CDAB"},
+        {"field_name": "Point2Capture", "register_type": "holding", "function_code": 3, "address": 456, "data_type": "FLOAT32", "scale": 1.0, "unit": "", "byte_order": "CDAB"},
+        {"field_name": "Point3Capture", "register_type": "holding", "function_code": 3, "address": 472, "data_type": "FLOAT32", "scale": 1.0, "unit": "", "byte_order": "CDAB"},
+        {"field_name": "LiveEncounterCount", "register_type": "holding", "function_code": 3, "address": 408, "data_type": "FLOAT32", "scale": 1.0, "unit": "", "byte_order": "CDAB"},
+    ],
 }
 
 
@@ -51,6 +68,7 @@ DEFAULT_REGISTERS = {
 class RegisterCreate(BaseModel):
     field_name: str
     register_type: str = "holding"
+    function_code: Optional[int] = 3
     address: int = 0
     data_type: str = "FLOAT32"
     byte_order: str = "ABCD"
@@ -58,9 +76,17 @@ class RegisterCreate(BaseModel):
     unit: Optional[str] = None
 
 
-class RegisterResponse(RegisterCreate):
+class RegisterResponse(BaseModel):
     id: int
     device_id: int
+    field_name: str
+    register_type: str
+    function_code: Optional[int]
+    address: int
+    data_type: str
+    byte_order: str
+    scale: float
+    unit: Optional[str]
 
     class Config:
         orm_mode = True
@@ -210,3 +236,25 @@ def bulk_update_registers(
         db.refresh(r)
     sync_telegraf_config()
     return new_regs
+
+import socket
+
+@router.get("/status")
+def get_modbus_status(db: Session = Depends(get_db)):
+    """Check connectivity to all enabled Modbus devices via a fast TCP connection ping."""
+    devices = db.query(ModbusDevice).filter(ModbusDevice.is_enabled == True).all()
+    status_map = {}
+    
+    for dev in devices:
+        if dev.protocol == "tcp" and dev.ip_address:
+            try:
+                # 0.5 sec timeout for quick polling
+                sock = socket.create_connection((dev.ip_address, dev.port), timeout=0.5)
+                sock.close()
+                status_map[dev.id] = {"connected": True}
+            except Exception:
+                status_map[dev.id] = {"connected": False}
+        else:
+            status_map[dev.id] = {"connected": False} # RTU or missing IP
+            
+    return status_map

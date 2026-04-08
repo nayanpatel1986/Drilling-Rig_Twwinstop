@@ -10,7 +10,7 @@ import { getRigHistory, getRigHistoryRange, exportExcel } from '../api';
 const ALL_PARAMS = [
     { key: 'BitDepth', label: 'Bit Depth', unit: 'm', group: 'Depth' },
     { key: 'Depth', label: 'Hole Depth', unit: 'm', group: 'Depth' },
-    { key: 'BlockPosition', label: 'Block Height', unit: 'm', group: 'Depth' },
+    { key: 'BLOCK_POS', label: 'Block Position', unit: 'm', group: 'Depth' },
     { key: 'WOB', label: 'Weight on Bit', unit: 'ton', group: 'Drilling' },
     { key: 'ROP', label: 'Rate of Penetration', unit: 'ft/hr', group: 'Drilling' },
     { key: 'RPM', label: 'Rotary RPM', unit: 'rpm', group: 'Drilling' },
@@ -34,17 +34,29 @@ const ALL_PARAMS = [
     { key: 'PitVolume3', label: 'Pit Volume 3', unit: 'm³', group: 'Mud' },
     { key: 'PitVolume4', label: 'Pit Volume 4', unit: 'm³', group: 'Mud' },
     { key: 'GainLoss', label: 'Gain/Loss', unit: 'm³', group: 'Mud' },
-    { key: 'TripTank1', label: 'Trip Tank 1', unit: 'bbl', group: 'Mud' },
-    { key: 'TripTank2', label: 'Trip Tank 2', unit: 'bbl', group: 'Mud' },
-    { key: 'TripTankGL', label: 'Trip Tank GL', unit: 'bbl', group: 'Mud' },
+    { key: 'TripTank1', label: 'Trip Tank 1', unit: 'm³', group: 'Mud' },
+    { key: 'TripTank2', label: 'Trip Tank 2', unit: 'm³', group: 'Mud' },
+    { key: 'TripTankGL', label: 'Trip Tank GL', unit: 'm³', group: 'Mud' },
     { key: 'TonMile', label: 'Ton Mile', unit: 'ton·mi', group: 'Other' },
     { key: 'H2SGas', label: 'H₂S Gas', unit: 'ppm', group: 'Other' },
     { key: 'SlipStatus', label: 'Slip Status', unit: '-', group: 'Other' },
+    // ── TwinStop Modbus Sensors ──
+    { key: 'BLOCK_HEIGHT', label: 'Block Height', unit: 'm', group: 'TwinStop' },
+    { key: 'C1', label: 'Calibration C1', unit: '', group: 'TwinStop' },
+    { key: 'C2', label: 'Calibration C2', unit: '', group: 'TwinStop' },
+    { key: 'C3', label: 'Calibration C3', unit: '', group: 'TwinStop' },
+    { key: 'EDMSCOUNT', label: 'EDMS Count', unit: '', group: 'TwinStop' },
+    { key: 'LiveEncounterCount', label: 'Live Encoder Count', unit: '', group: 'TwinStop' },
+    { key: 'Point1Capture', label: 'Point 1 Capture', unit: '', group: 'TwinStop' },
+    { key: 'Point2Capture', label: 'Point 2 Capture', unit: '', group: 'TwinStop' },
+    { key: 'Point3Capture', label: 'Point 3 Capture', unit: '', group: 'TwinStop' },
+    { key: 'Brake_Pressure_Setpoint', label: 'Brake Pressure SP', unit: 'psi', group: 'TwinStop' },
+    { key: 'Target_Torque', label: 'Target Torque', unit: 'ft-lb', group: 'TwinStop' },
 ];
 
 const PARAM_GROUPS = [...new Set(ALL_PARAMS.map(p => p.group))];
 
-const DEFAULT_SELECTED = ['WOB', 'ROP', 'RPM', 'HookLoad'];
+const DEFAULT_SELECTED = ['BLOCK_HEIGHT', 'LiveEncounterCount', 'C1', 'C2', 'C3'];
 
 /* ── Color palette for chart lines ────────────────────── */
 const LINE_COLORS = [
@@ -121,7 +133,15 @@ function CustomTooltip({ active, payload, label, selectedParams }) {
 /* ═════════════════════════════════════════════════════ */
 export default function LiveTrend() {
     // Parameter selection
-    const [selectedKeys, setSelectedKeys] = useState(() => load('liveTrendParams_v2', DEFAULT_SELECTED));
+    const [selectedKeys, setSelectedKeys] = useState(() => {
+        const saved = load('liveTrendParams_v2', DEFAULT_SELECTED);
+        // Migration: Old keys to new keys
+        return saved.map(k => {
+            if (k === 'BLOCKHEIGHT') return 'BLOCK_HEIGHT';
+            if (k === 'BlockPosition') return 'BLOCK_POS';
+            return k;
+        });
+    });
     const [showParamPanel, setShowParamPanel] = useState(false);
     const paramPanelRef = useRef(null);
 

@@ -1,0 +1,130 @@
+﻿docker : 
+2026-04-06T11:07:57Z W! 
+[inputs.modbus] 
+Collection took longer 
+than expected; not 
+complete after interval 
+of 500ms
+At line:1 char:1
++ docker logs 
+drillbit_telegraf --tail 
+20 2>&1 | ForEach-Object 
+{ $_ }  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (2  
+  026-04-06T11:0...terv   
+ al of 500ms:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+2026-04-06T11:07:57Z E! 
+[inputs.modbus] Error in 
+plugin: dial tcp 
+192.168.1.11:502: i/o 
+timeout
+2026-04-06T11:07:58Z W! 
+[inputs.modbus] 
+Collection took longer 
+than expected; not 
+complete after interval 
+of 500ms
+2026-04-06T11:07:59Z W! 
+[inputs.modbus] 
+Collection took longer 
+than expected; not 
+complete after interval 
+of 500ms
+2026-04-06T11:07:59Z E! 
+[inputs.modbus] Error in 
+plugin: dial tcp 
+192.168.1.11:502: i/o 
+timeout
+2026-04-06T11:08:00Z W! 
+[inputs.modbus] 
+Collection took longer 
+than expected; not 
+complete after interval 
+of 500ms
+2026-04-06T11:08:00Z W! 
+[inputs.modbus] 
+Collection took longer 
+than expected; not 
+complete after interval 
+of 500ms
+2026-04-06T11:08:00Z E! 
+[inputs.modbus] Error in 
+plugin: dial tcp 
+192.168.1.11:502: i/o 
+timeout
+2026-04-06T11:08:01Z W! 
+[inputs.modbus] 
+Collection took longer 
+than expected; not 
+complete after interval 
+of 500ms
+2026-04-06T11:08:02Z W! 
+[inputs.modbus] 
+Collection took longer 
+than expected; not 
+complete after interval 
+of 500ms
+2026-04-06T11:08:02Z E! 
+[inputs.modbus] Error in 
+plugin: dial tcp 
+192.168.1.11:502: i/o 
+timeout
+2026-04-06T11:08:03Z W! 
+[inputs.modbus] 
+Collection took longer 
+than expected; not 
+complete after interval 
+of 500ms
+2026-04-06T11:08:03Z W! 
+[inputs.modbus] 
+Collection took longer 
+than expected; not 
+complete after interval 
+of 500ms
+2026-04-06T11:08:03Z E! 
+[inputs.modbus] Error in 
+plugin: dial tcp 
+192.168.1.11:502: i/o 
+timeout
+2026-04-06T11:08:04Z W! 
+[inputs.modbus] 
+Collection took longer 
+than expected; not 
+complete after interval 
+of 500ms
+2026-04-06T11:08:05Z W! 
+[inputs.modbus] 
+Collection took longer 
+than expected; not 
+complete after interval 
+of 500ms
+2026-04-06T11:08:05Z E! 
+[inputs.modbus] Error in 
+plugin: dial tcp 
+192.168.1.11:502: i/o 
+timeout
+2026-04-06T11:08:06Z W! 
+[inputs.modbus] 
+Collection took longer 
+than expected; not 
+complete after interval 
+of 500ms
+2026-04-06T11:08:06Z W! 
+[inputs.modbus] 
+Collection took longer 
+than expected; not 
+complete after interval 
+of 500ms
+2026-04-06T11:08:06Z E! 
+[inputs.modbus] Error in 
+plugin: dial tcp 
+192.168.1.11:502: i/o 
+timeout

@@ -1,0 +1,14 @@
+﻿drillbit_frontend
+drillbit_backend
+drillbit_telegraf
+drillbit_postgres
+drillbit_mqtt
+drillbit_influx
+romii_frontend
+romii_backend
+romii_telegraf
+romii_influxdb
+waukesha-frontend
+telegraf_waukesha
+waukesha-backend
+influxdb_waukesha

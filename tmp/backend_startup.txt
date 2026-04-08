@@ -1,0 +1,34 @@
+Analytics Engine Started...
+Backend started. LIVE MODE active ??? waiting for WITSML/Modbus connections.
+INFO:     172.19.0.5:40008 - "GET /rig/latest HTTP/1.1" 200 OK
+INFO:     172.19.0.5:40028 - "GET /rig/latest HTTP/1.1" 200 OK
+INFO:     172.19.0.5:57236 - "GET /rig/latest HTTP/1.1" 200 OK
+INFO:     172.19.0.5:57240 - "GET /rig/latest HTTP/1.1" 200 OK
+docker : INFO:     
+Application startup 
+complete.
+At line:1 char:25
++ ... Sleep -Seconds 5; 
+docker logs 
+drillbit_backend --tail 
+10 2>&1 | Out-F ...
++                       ~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (I  
+  NFO:     Application    
+ startup complete.:Str    
+ing) [], RemoteExcept    
+ion
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+INFO:     ('172.19.0.5', 
+40018) - "WebSocket 
+/ws/realtime" [accepted]
+INFO:services.websocket_se
+rver:WebSocket connected: 
+client_1 (Total active: 1)
+INFO:     connection open

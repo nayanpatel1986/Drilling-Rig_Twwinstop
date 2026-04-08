@@ -1,0 +1,73 @@
+docker : 
+2026-04-01T06:56:12Z I! 
+Loading config: /etc/teleg
+raf/telegraf.conf
+At line:1 char:1
++ docker exec 
+drillbit_telegraf 
+telegraf --test 2>&1 | 
+Select-Object -F ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (2  
+  026-04-01T06:5...f/te   
+ legraf.conf:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+2026-04-01T06:56:12Z I! 
+Starting Telegraf 1.28.5 
+brought to you by 
+InfluxData the makers of 
+InfluxDB
+2026-04-01T06:56:12Z I! 
+Available plugins: 240 
+inputs, 9 aggregators, 29 
+processors, 24 parsers, 
+59 outputs, 5 
+secret-stores
+2026-04-01T06:56:12Z I! 
+Loaded inputs: internal 
+modbus
+2026-04-01T06:56:12Z I! 
+Loaded aggregators: 
+2026-04-01T06:56:12Z I! 
+Loaded processors: 
+2026-04-01T06:56:12Z I! 
+Loaded secretstores: 
+2026-04-01T06:56:12Z W! 
+Outputs are not used in 
+testing mode!
+2026-04-01T06:56:12Z I! 
+Tags enabled: 
+host=rig-telegraf
+2026-04-01T06:56:12Z I! 
+[inputs.modbus] Got 9 
+request(s) touching 22 
+holding registers for 11 
+fields (slave 1)
+2026-04-01T06:56:12Z I! 
+[inputs.modbus] Got 0 
+request(s) touching 0 
+inputs registers for 0 
+fields (slave 1)
+2026-04-01T06:56:12Z I! 
+[inputs.modbus] Got 0 
+request(s) touching 0 
+discrete registers for 0 
+fields (slave 1)
+2026-04-01T06:56:12Z I! 
+[inputs.modbus] Got 2 
+request(s) touching 3 
+coil registers for 3 
+fields (slave 1)
+> internal_agent,go_version=1.21.4,host=rig-telegraf,version=1.28.5 gather_errors=0i,gather_timeouts=0i,metrics_dropped=0i,metrics_gathered=0i,metrics_written=0i 1775026572000000000
+> internal_gather,host=rig-telegraf,input=internal,version=1.28.5 errors=0i,gather_time_ns=0i,gather_timeouts=0i,metrics_gathered=0i 1775026572000000000
+> internal_gather,host=rig-telegraf,input=modbus,version=1.28.5 errors=0i,gather_time_ns=0i,gather_timeouts=0i,metrics_gathered=0i 1775026572000000000
+> internal_write,host=rig-telegraf,output=influxdb_v2,version=1.28.5 buffer_limit=10000i,buffer_size=0i,errors=0i,metrics_added=0i,metrics_dropped=0i,metrics_filtered=0i,metrics_written=0i,write_time_ns=0i 1775026572000000000
+> internal_memstats,host=rig-telegraf alloc_bytes=29370288i,frees=50527i,heap_alloc_bytes=29370288i,heap_idle_bytes=5808128i,heap_in_use_bytes=30990336i,heap_objects=63231i,heap_released_bytes=4079616i,heap_sys_bytes=36798464i,mallocs=113758i,num_gc=2i,pointer_lookups=0i,sys_bytes=45283075i,total_alloc_bytes=36320848i 1775026572000000000
+> modbus,device_name=TWINSTOP,device_type=twinstop,host=rig-telegraf,name=rig_sensors,rig_id=E-1400-1,slave_id=1,type=coil Brake_Release=0i,EStop_Reset=0i,Safety_Override=0i 1775026572000000000
+> modbus,device_name=TWINSTOP,device_type=twinstop,host=rig-telegraf,name=rig_sensors,rig_id=E-1400-1,slave_id=1,type=holding_register BLOCKHEIGHT=0,Brake_Pressure_Setpoint=0.00000000000000000000000000000000000000018367099231598242,C1=0.00000000000000011126555973705525,C2=0.000000000000007121148289102042,C3=0.0000000000000000695123411515754,EDMSCOUNT=0,LiveEncounterCount=366592,Point1Capture=104448.0078125,Point2Capture=262144,Point3Capture=442368,Target_Torque=0.00000000000000000000000000000000010081039552651938 1775026572000000000

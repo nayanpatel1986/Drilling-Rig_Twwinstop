@@ -1,0 +1,14 @@
+﻿drillbit_frontend | Up 12 hours
+drillbit_backend | Up 20 minutes
+drillbit_telegraf | Up 20 minutes
+drillbit_postgres | Up 14 hours
+drillbit_mqtt | Up 14 hours
+drillbit_influx | Up 14 hours
+romii_frontend | Up 13 hours
+romii_backend | Up 13 hours
+romii_telegraf | Exited (1) 13 hours ago
+romii_influxdb | Up 13 hours
+waukesha-frontend | Created
+telegraf_waukesha | Created
+waukesha-backend | Exited (1) 3 weeks ago
+influxdb_waukesha | Exited (2) 5 days ago

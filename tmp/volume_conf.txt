@@ -1,0 +1,42 @@
+﻿[agent]
+  interval = "500ms"
+  round_interval = true
+  metric_batch_size = 1000
+  metric_buffer_limit = 10000
+  collection_jitter = "0s"
+  flush_interval = "500ms"
+  flush_jitter = "0s"
+  precision = ""
+  hostname = "modbus"
+  omit_hostname = false
+
+[[inputs.internal]]
+  collect_memstats = true
+
+[[outputs.influxdb_v2]]
+  urls = ["http://influxdb:8086"]
+  token = "my-super-secret-auth-token"
+  organization = "nov_rig"
+  bucket = "rig_data"
+
+# ΓöÇΓöÇ TWINSTOP (twinstop) ΓöÇΓöÇ
+[[inputs.modbus]]
+  name = "rig_sensors"
+  slave_id = 1
+  timeout = "1s"
+  name_override = "modbus"
+  configuration_type = "register"
+  controller = "tcp://192.168.1.10:502"
+
+  holding_registers = [
+    { name = "Point1Capture", byte_order = "DCBA", data_type = "FLOAT32-IEEE", scale = 1.0, address = [440, 441] },
+    { name = "Point2Capture", byte_order = "DCBA", data_type = "FLOAT32-IEEE", scale = 1.0, address = [456, 457] },
+    { name = "Point3Capture", byte_order = "DCBA", data_type = "FLOAT32-IEEE", scale = 1.0, address = [472, 473] },
+    { name = "LiveEncounterCount", byte_order = "DCBA", data_type = "FLOAT32-IEEE", scale = 1.0, address = [408, 409] },
+  ]
+
+  [inputs.modbus.tags]
+    device_name = "TWINSTOP"
+    device_type = "twinstop"
+    rig_id = "E-1400-1"
+
