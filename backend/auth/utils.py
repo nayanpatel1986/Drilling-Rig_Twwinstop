@@ -3,10 +3,17 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import jwt
 
-# Openssl rand -hex 32
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+import os
+
+# Secure secret key from environment
+SECRET_KEY = os.getenv("JWT_SECRET")
+if not SECRET_KEY:
+    # Use a warning in dev, but in a real prod system we should fail
+    print("WARNING: JWT_SECRET environment variable is not set. Using a temporary insecure key.")
+    SECRET_KEY = "insecure-fallback-key-change-me-immediately"
+
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 52560000 # 100 years (effectively no timeout)
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440 # 24 hours
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 

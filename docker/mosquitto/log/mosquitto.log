@@ -940,3 +940,40 @@
 1775576111: Saving in-memory database to /mosquitto/data//mosquitto.db.
 1775577912: Saving in-memory database to /mosquitto/data//mosquitto.db.
 1775579713: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1775671077: mosquitto version 2.1.2 starting
+1775671077: Config loaded from /mosquitto/config/mosquitto.conf.
+1775671077: Bridge support available.
+1775671077: Persistence support available.
+1775671077: TLS support available.
+1775671077: TLS-PSK support available.
+1775671077: Websockets support available.
+1775671077: Opening ipv4 listen socket on port 1883.
+1775671077: Opening ipv6 listen socket on port 1883.
+1775671077: mosquitto version 2.1.2 running
+1775671111: mosquitto version 2.1.2 terminating
+1775671111: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1775671139: mosquitto version 2.1.2 starting
+1775671139: Config loaded from /mosquitto/config/mosquitto.conf.
+1775671139: Bridge support available.
+1775671139: Persistence support available.
+1775671139: TLS support available.
+1775671139: TLS-PSK support available.
+1775671139: Websockets support available.
+1775671139: Opening ipv4 listen socket on port 1883.
+1775671139: Opening ipv6 listen socket on port 1883.
+1775671139: mosquitto version 2.1.2 running
+1775708078: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1775709879: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1775711680: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1775712915: mosquitto version 2.1.2 terminating
+1775712915: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1775712939: mosquitto version 2.1.2 starting
+1775712939: Config loaded from /mosquitto/config/mosquitto.conf.
+1775712939: Bridge support available.
+1775712939: Persistence support available.
+1775712939: TLS support available.
+1775712939: TLS-PSK support available.
+1775712939: Websockets support available.
+1775712939: Opening ipv4 listen socket on port 1883.
+1775712939: Opening ipv6 listen socket on port 1883.
+1775712939: mosquitto version 2.1.2 running

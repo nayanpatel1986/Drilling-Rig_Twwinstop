@@ -51,9 +51,9 @@ DEFAULT_REGISTERS = {
         {"field_name": "Set_Zero", "register_type": "coil", "function_code": 5, "address": 402, "data_type": "UINT16", "scale": 1.0, "unit": ""},
         {"field_name": "Calibrate_At_Known_Height", "register_type": "coil", "function_code": 5, "address": 403, "data_type": "UINT16", "scale": 1.0, "unit": ""},
         {"field_name": "Known_Height", "register_type": "holding", "function_code": 16, "address": 528, "data_type": "FLOAT32", "scale": 1.0, "unit": "ft"},
-        {"field_name": "Crownomatic", "register_type": "holding", "function_code": 3, "address": 496, "data_type": "FLOAT32", "scale": 1.0, "unit": "m", "byte_order": "CDAB"},
-        {"field_name": "Flooromatic", "register_type": "holding", "function_code": 3, "address": 504, "data_type": "FLOAT32", "scale": 1.0, "unit": "m", "byte_order": "CDAB"},
-        {"field_name": "AlarmOffset", "register_type": "holding", "function_code": 3, "address": 512, "data_type": "FLOAT32", "scale": 1.0, "unit": "m", "byte_order": "CDAB"},
+        {"field_name": "Crownomatic", "register_type": "holding", "function_code": 3, "address": 496, "data_type": "FLOAT32", "scale": 1.0, "unit": "m", "byte_order": "CDAB", "min_value": 0.0, "max_value": 34.0},
+        {"field_name": "Flooromatic", "register_type": "holding", "function_code": 3, "address": 504, "data_type": "FLOAT32", "scale": 1.0, "unit": "m", "byte_order": "CDAB", "min_value": 0.0, "max_value": 34.0},
+        {"field_name": "AlarmOffset", "register_type": "holding", "function_code": 3, "address": 512, "data_type": "FLOAT32", "scale": 1.0, "unit": "m", "byte_order": "CDAB", "min_value": 0.0, "max_value": 5.0},
         {"field_name": "BH", "register_type": "holding", "function_code": 3, "address": 416, "data_type": "FLOAT32", "scale": 1.0, "unit": "m", "byte_order": "CDAB"},
         {"field_name": "Point1Capture", "register_type": "holding", "function_code": 3, "address": 440, "data_type": "FLOAT32", "scale": 1.0, "unit": "", "byte_order": "CDAB"},
         {"field_name": "Point2Capture", "register_type": "holding", "function_code": 3, "address": 456, "data_type": "FLOAT32", "scale": 1.0, "unit": "", "byte_order": "CDAB"},
@@ -74,6 +74,8 @@ class RegisterCreate(BaseModel):
     byte_order: str = "ABCD"
     scale: float = 1.0
     unit: Optional[str] = None
+    min_value: Optional[float] = None
+    max_value: Optional[float] = None
 
 
 class RegisterResponse(BaseModel):
@@ -87,6 +89,8 @@ class RegisterResponse(BaseModel):
     byte_order: str
     scale: float
     unit: Optional[str]
+    min_value: Optional[float]
+    max_value: Optional[float]
 
     class Config:
         orm_mode = True

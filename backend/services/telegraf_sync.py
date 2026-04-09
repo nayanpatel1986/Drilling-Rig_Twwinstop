@@ -186,30 +186,9 @@ def sync_telegraf_config():
         except Exception as e:
             print(f"TELEGRAF SYNC: Could not write host copy: {e}", flush=True)
         
-        # Restart Telegraf container via Docker socket
-        try:
-            import http.client
-
-            class DockerSocketConnection(http.client.HTTPConnection):
-                def __init__(self):
-                    super().__init__("localhost")
-                
-                def connect(self):
-                    import socket
-                    self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                    self.sock.connect("/var/run/docker.sock")
-            
-            conn = DockerSocketConnection()
-            conn.request("POST", "/containers/drillbit_telegraf/restart?t=2")
-            response = conn.getresponse()
-            if response.status == 204:
-                print("TELEGRAF SYNC: Container restarted successfully.", flush=True)
-            else:
-                body = response.read().decode()
-                print(f"TELEGRAF SYNC: Restart returned HTTP {response.status}: {body[:200]}", flush=True)
-            conn.close()
-        except Exception as e:
-            print(f"TELEGRAF SYNC: Could not restart container: {e}", flush=True)
+        # Restart logic removed: The new secure Telegraf Reloader (reloader.sh) 
+        # now handles this automatically by watching for file changes.
+        print("TELEGRAF SYNC: Config updated. Reloader sidecar will restart Telegraf shortly.", flush=True)
         
     except Exception as e:
         print(f"TELEGRAF SYNC ERROR: {e}", flush=True)

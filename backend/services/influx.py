@@ -4,10 +4,13 @@ import os
 
 class InfluxWrapper:
     def __init__(self):
-        self.url = os.getenv("INFLUX_URL", "http://influxdb:8086")
-        self.token = os.getenv("INFLUX_TOKEN", "my-super-secret-auth-token")
-        self.org = os.getenv("INFLUX_ORG", "nov_rig")
-        self.bucket = os.getenv("INFLUX_BUCKET", "rig_data")
+        self.url = os.getenv("INFLUXDB_URL", "http://influxdb:8086")
+        self.token = os.getenv("INFLUXDB_TOKEN")
+        self.org = os.getenv("INFLUXDB_ORG", "nov_rig")
+        self.bucket = os.getenv("INFLUXDB_BUCKET", "rig_data")
+        
+        if not self.token:
+            raise RuntimeError("INFLUXDB_TOKEN environment variable is mandatory.")
         
         self.client = InfluxDBClient(url=self.url, token=self.token, org=self.org)
         self.write_api = self.client.write_api(write_options=SYNCHRONOUS)

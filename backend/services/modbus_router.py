@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from db_models import ModbusDevice, User
+from db_models import ModbusDevice, ModbusRegister, User
 from auth.router import get_current_user
 from pydantic import BaseModel
 from typing import List, Optional
@@ -81,6 +81,18 @@ async def write_register(
     if not device.ip_address:
          raise HTTPException(status_code=400, detail="Device has no IP address configured")
 
+    # Safety Limit Validation
+    register_config = db.query(ModbusRegister).filter(
+        ModbusRegister.device_id == payload.device_id,
+        ModbusRegister.address == payload.address
+    ).first()
+
+    if register_config:
+        if register_config.min_value is not None and payload.value < (register_config.min_value / register_config.scale):
+             raise HTTPException(status_code=400, detail=f"Safety Violation: Value {payload.value} is below minimum allowed ({register_config.min_value} {register_config.unit})")
+        if register_config.max_value is not None and payload.value > (register_config.max_value / register_config.scale):
+             raise HTTPException(status_code=400, detail=f"Safety Violation: Value {payload.value} is above maximum allowed ({register_config.max_value} {register_config.unit})")
+
     result = await modbus_writer.write_register(
         device.ip_address, 
         device.port, 
@@ -134,6 +146,18 @@ async def write_float(
     
     if not device.ip_address:
          raise HTTPException(status_code=400, detail="Device has no IP address configured")
+
+    # Safety Limit Validation
+    register_config = db.query(ModbusRegister).filter(
+        ModbusRegister.device_id == payload.device_id,
+        ModbusRegister.address == payload.address
+    ).first()
+
+    if register_config:
+        if register_config.min_value is not None and payload.value < (register_config.min_value / register_config.scale):
+             raise HTTPException(status_code=400, detail=f"Safety Violation: Value {payload.value} is below minimum allowed ({register_config.min_value} {register_config.unit})")
+        if register_config.max_value is not None and payload.value > (register_config.max_value / register_config.scale):
+             raise HTTPException(status_code=400, detail=f"Safety Violation: Value {payload.value} is above maximum allowed ({register_config.max_value} {register_config.unit})")
 
     result = await modbus_writer.write_float(
         device.ip_address, 

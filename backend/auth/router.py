@@ -16,6 +16,9 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
+class PinVerify(BaseModel):
+    pin: str
+
 class UserCreate(BaseModel):
     username: str
     email: str
@@ -35,8 +38,17 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Username already registered")
     
     hashed_password = get_password_hash(user.password)
-    # First user is admin, others viewer by default (logic can be improved)
+    # First user logic: Allow first registered user to be admin, 
+    # but only if no users exist. In production, this should likely be 
+    # disabled after initial setup.
     is_first = db.query(User).count() == 0
+    ENV = os.getenv("ENV", "development").lower()
+    
+    if ENV == "production" and not is_first:
+        # Require an existing admin to create new users in production
+        # (This is simplified; you'd ideally check current_user.role == 'admin')
+        raise HTTPException(status_code=403, detail="Public registration disabled in production")
+        
     role = "admin" if is_first else "viewer"
     
     new_user = User(
@@ -60,7 +72,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    access_token_expires = timedelta(days=36500) # Effectively indefinite login
+    from .utils import ACCESS_TOKEN_EXPIRE_MINUTES
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username, "role": user.role}, 
         expires_delta=access_token_expires
@@ -95,3 +108,14 @@ def get_users(db: Session = Depends(get_db), current_user: User = Depends(get_cu
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
     return db.query(User).all()
+
+@router.post("/verify-pin")
+async def verify_pin(data: PinVerify):
+    import os
+    manager_pin = os.getenv("MANAGER_PIN", "").strip()
+    if not manager_pin:
+        raise HTTPException(status_code=500, detail="MANAGER_PIN not configured in environment")
+        
+    if data.pin == manager_pin:
+        return {"success": True}
+    raise HTTPException(status_code=401, detail="Invalid Manager PIN")

@@ -1,6 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import WebSocket, WebSocketDisconnect
+from db_models import User
 import uvicorn
 from typing import Dict, List
 
@@ -8,13 +8,27 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-app = FastAPI(title="DrillBit Digital Twin API", version="1.0.0")
+ENV = os.getenv("ENV", "development").lower()
+is_prod = ENV == "production"
+
+app = FastAPI(
+    title="DrillBit Digital Twin API", 
+    version="1.0.0",
+    docs_url=None if is_prod else "/docs",
+    redoc_url=None if is_prod else "/redoc",
+    openapi_url=None if is_prod else "/openapi.json"
+)
 
 LIVE_MODE = os.getenv("LIVE_MODE", "false").lower() == "true"
 
+from auth.router import get_current_user
+
+# Get CORS origins from environment or default to localhost
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:8081,http://127.0.0.1:8081").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,28 +70,8 @@ async def startup_event():
         analytics_engine.start()
         print("Backend started. LIVE MODE active — waiting for WITSML/Modbus connections.")
 
-    # Create default admin user
-    from database import SessionLocal
-    from db_models import User, UserRole
-    from auth.utils import get_password_hash
-    
-    db = SessionLocal()
-    try:
-        admin = db.query(User).filter(User.username == "admin").first()
-        if not admin:
-            admin_user = User(
-                username="admin",
-                email="admin@drillbit.com",
-                hashed_password=get_password_hash("admin123"),
-                role=UserRole.ADMIN
-            )
-            db.add(admin_user)
-            db.commit()
-            print("Default admin user created: admin / admin123")
-    except Exception as e:
-        print(f"Error creating default user: {e}")
-    finally:
-        db.close()
+    # Connection of managers
+    pass
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -141,7 +135,7 @@ from fastapi import APIRouter
 rig_router = APIRouter(prefix="/rig", tags=["Rig Telemetry"])
 
 @rig_router.get("/latest")
-async def get_latest_data():
+async def get_latest_data(_: User = Depends(get_current_user)):
     """Get latest drilling values from InfluxDB (WITSML + Modbus Sensors)."""
     from services.influx import InfluxWrapper
     from services.analytics import engine
@@ -165,7 +159,7 @@ async def get_latest_data():
     return convert_units_to_metric(merged_data)
 
 @rig_router.get("/history")
-async def get_history(range: str = "-5m"):
+async def get_history(range: str = "-5m", _: User = Depends(get_current_user)):
     """Get time-series drilling data for charts."""
     from services.influx import InfluxWrapper
     influx = InfluxWrapper()
@@ -191,7 +185,7 @@ async def get_history(range: str = "-5m"):
     return convert_units_to_metric(all_rows)
 
 @rig_router.get("/history-range")
-async def get_history_range(start: str = "", stop: str = ""):
+async def get_history_range(start: str = "", stop: str = "", _: User = Depends(get_current_user)):
     """Get time-series data between two absolute ISO timestamps."""
     from services.influx import InfluxWrapper
     influx = InfluxWrapper()
@@ -218,7 +212,7 @@ async def get_history_range(start: str = "", stop: str = ""):
     return convert_units_to_metric(all_rows)
 
 @rig_router.get("/sensors")
-async def get_sensors():
+async def get_sensors(_: User = Depends(get_current_user)):
     """Get latest equipment sensor readings from Telegraf."""
     from services.influx import InfluxWrapper
     influx = InfluxWrapper()
@@ -247,4 +241,8 @@ async def websocket_stats():
     return ws_manager.get_stats()
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    host = os.getenv("API_HOST", "0.0.0.0")
+    port = int(os.getenv("API_PORT", 8000))
+    reload = os.getenv("API_RELOAD", "true").lower() == "true" and not is_prod
+    
+    uvicorn.run("main:app", host=host, port=port, reload=reload)

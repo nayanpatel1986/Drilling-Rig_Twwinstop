@@ -7,6 +7,7 @@ import RadialGauge from '../components/RadialGauge';
 import { ResponsiveGridLayout } from 'react-grid-layout';
 import CalibrationModal from '../components/CalibrationModal';
 import SinglePointModal from '../components/SinglePointModal';
+import SafetyGate from '../components/SafetyGate';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
@@ -83,6 +84,8 @@ export default function DrillingTwin() {
     const [isSinglePointModalOpen, setIsSinglePointModalOpen] = useState(false);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     const [isTwinstopModalOpen, setIsTwinstopModalOpen] = useState(false);
+    const [isSafetyGateOpen, setIsSafetyGateOpen] = useState(false);
+    const [pendingAction, setPendingAction] = useState(null);
     const { ref: containerRef, width: containerWidth } = useActualContainerWidth();
 
     // Initial default widget configuration - Includes metadata for custom parameter mapping
@@ -160,6 +163,20 @@ export default function DrillingTwin() {
         const interval = setInterval(fetch, 1000);
         return () => clearInterval(interval);
     }, []);
+
+
+    const handleSafetyAction = (action) => {
+        setPendingAction(() => action);
+        setIsSafetyGateOpen(true);
+    };
+
+    const onSafetySuccess = () => {
+        setIsSafetyGateOpen(false);
+        if (pendingAction) {
+            pendingAction();
+            setPendingAction(null);
+        }
+    };
 
     // Mud Volumes mapped to WITSML keys
     const mudVolumes = [
@@ -279,7 +296,7 @@ export default function DrillingTwin() {
                     return (
                         <div 
                             className="w-full h-full flex flex-col cursor-pointer hover:bg-white/5 transition-colors group"
-                            onClick={() => setIsTwinstopModalOpen(true)}
+                            onClick={() => handleSafetyAction(() => setIsTwinstopModalOpen(true))}
                         >
                             <div className="flex-1 min-h-0 flex items-center justify-center pointer-events-none relative">
                                 <svg viewBox="20 10 160 275" className="w-full h-full drop-shadow-2xl" preserveAspectRatio="xMidYMid meet">
@@ -379,7 +396,7 @@ export default function DrillingTwin() {
                 return (
                     <div 
                         className="h-full flex flex-col items-center justify-center p-2 cursor-pointer hover:bg-white/5 transition-colors group"
-                        onClick={() => setIsSelectorOpen(true)}
+                        onClick={() => handleSafetyAction(() => setIsSelectorOpen(true))}
                     >
                          <div className="flex items-baseline gap-2">
                              <span className="text-4xl font-black text-[#0ea5e9] font-mono leading-none drop-shadow-md group-hover:scale-110 transition-transform">
@@ -400,7 +417,7 @@ export default function DrillingTwin() {
                          {/* Block Height */}
                          <div 
                              className="bg-slate-800/30 flex flex-col items-center justify-center rounded-xl border border-white/5 p-1 sm:p-2 hover:bg-white/5 transition-colors relative overflow-hidden cursor-pointer group"
-                             onClick={() => setIsSelectorOpen(true)}
+                             onClick={() => handleSafetyAction(() => setIsSelectorOpen(true))}
                          >
                              <span className="text-[9px] sm:text-[10px] text-[#0ea5e9] opacity-80 font-black uppercase tracking-wider mb-1 text-center leading-tight">BH</span>
                              <div className="flex items-baseline gap-1">
@@ -609,6 +626,12 @@ export default function DrillingTwin() {
                 isOpen={isTwinstopModalOpen} 
                 onClose={() => setIsTwinstopModalOpen(false)} 
                 data={data} 
+            />
+
+            <SafetyGate 
+                isOpen={isSafetyGateOpen} 
+                onClose={() => setIsSafetyGateOpen(false)} 
+                onSuccess={onSafetySuccess} 
             />
         </div>
     );

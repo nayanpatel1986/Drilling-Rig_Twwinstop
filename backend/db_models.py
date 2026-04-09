@@ -156,6 +156,10 @@ class ModbusRegister(Base):
     byte_order = Column(String, default="ABCD")           # ABCD, DCBA, BADC, CDAB
     scale = Column(Float, default=1.0)
     unit = Column(String, nullable=True)                  # e.g. "rpm", "psi", "spm"
+    
+    # Safety Limits (Industrial Risk Protection)
+    min_value = Column(Float, nullable=True)
+    max_value = Column(Float, nullable=True)
 
     device = relationship("ModbusDevice", back_populates="registers")
 
