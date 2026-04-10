@@ -80,7 +80,12 @@ export function useRealtimeData(options = {}) {
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.host;
-        const wsUrl = `${protocol}//${host}/ws/realtime`;
+        const token = localStorage.getItem('token');
+        if (!token) {
+            console.log('[WebSocket] No token found, skipping connection');
+            return;
+        }
+        const wsUrl = `${protocol}//${host}/ws/realtime?token=${token}`;
 
         try {
             const ws = new WebSocket(wsUrl);

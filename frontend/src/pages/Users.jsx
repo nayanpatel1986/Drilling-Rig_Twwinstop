@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getUsers, registerUser, getWitsmlConfigs, createWitsmlConfig, updateWitsmlConfig, activateWitsmlConfig, deleteWitsmlConfig, bulkUpdateMappings, getModbusDevices, createModbusDevice, updateModbusDevice, deleteModbusDevice, toggleModbusDevice, bulkUpdateRegisters, testWitsmlConnection, browseWitsmlWells, browseWitsmlWellbores, browseWitsmlLogs, getRigData, getHealth, getActiveWell, createWell, endWell, getModbusStatus } from '../api';
+import { getUsers, createUser, getWitsmlConfigs, createWitsmlConfig, updateWitsmlConfig, activateWitsmlConfig, deleteWitsmlConfig, bulkUpdateMappings, getModbusDevices, createModbusDevice, updateModbusDevice, deleteModbusDevice, toggleModbusDevice, bulkUpdateRegisters, testWitsmlConnection, browseWitsmlWells, browseWitsmlWellbores, browseWitsmlLogs, getRigData, getHealth, getActiveWell, createWell, endWell, getModbusStatus } from '../api';
 import { User, Plus, Shield, ShieldAlert, Server, Trash2, Edit3, Power, CheckCircle, XCircle, ChevronDown, ChevronRight, Save, RotateCcw, ArrowRightLeft, Cpu, Wifi, WifiOff, LayoutPanelTop, Search, Loader2, StopCircle } from 'lucide-react';
 
 export default function Users() {
@@ -156,20 +156,23 @@ function WellManagementTab() {
 function UsersTab() {
     const [users, setUsers] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
-    const [form, setForm] = useState({ username: '', email: '', password: '' });
+    const [form, setForm] = useState({ username: '', email: '', password: '', role: 'viewer' });
     const [error, setError] = useState('');
+    const [canManageUsers, setCanManageUsers] = useState(false);
 
     const fetchUsers = async () => {
         try {
             const data = await getUsers();
             setUsers(data);
             setError('');
+            setCanManageUsers(true);
         } catch (err) {
+            setCanManageUsers(false);
             if (err.response) {
                 if (err.response.status === 401) {
                     setError('Session expired or unauthorized. Please log in again.');
                 } else if (err.response.status === 403) {
-                    setError('Access denied: Only administrators can view users.');
+                    setError('Access denied: Only administrators can manage users.');
                 } else {
                     setError(`Failed to fetch users: ${err.response.data?.detail || err.response.statusText}`);
                 }
@@ -183,36 +186,59 @@ function UsersTab() {
     const handleCreate = async (e) => {
         e.preventDefault();
         try {
-            await registerUser(form.username, form.email, form.password);
+            await createUser(form.username, form.email, form.password, form.role);
             setIsOpen(false);
-            setForm({ username: '', email: '', password: '' });
+            setForm({ username: '', email: '', password: '', role: 'viewer' });
             fetchUsers();
-        } catch { alert("Failed to create user. Username might be taken."); }
+        } catch (err) {
+            const message = err.response?.data?.detail || 'Failed to create user.';
+            alert(message);
+        }
     };
 
     return (
         <>
-            <div className="flex justify-end mb-4">
-                <button onClick={() => setIsOpen(true)} className="btn bg-nov-accent hover:bg-nov-accent/80 text-white flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors">
-                    <Plus size={16} /> Add User
-                </button>
-            </div>
+            {canManageUsers && (
+                <div className="flex justify-end mb-4">
+                    <button onClick={() => setIsOpen(true)} className="btn bg-nov-accent hover:bg-nov-accent/80 text-white flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors">
+                        <Plus size={16} /> Add User
+                    </button>
+                </div>
+            )}
+            {canManageUsers && (
+                <div className="grid gap-3 md:grid-cols-3 mb-4">
+                    <div className="bg-gray-800/40 border border-white/5 rounded-xl p-4">
+                        <p className="text-xs font-black uppercase tracking-widest text-nov-accent mb-1">Admin</p>
+                        <p className="text-sm text-gray-300">Full access to users, configuration, wells, and calibration actions.</p>
+                    </div>
+                    <div className="bg-gray-800/40 border border-white/5 rounded-xl p-4">
+                        <p className="text-xs font-black uppercase tracking-widest text-amber-400 mb-1">Operator</p>
+                        <p className="text-sm text-gray-300">Can operate wells and calibration controls, but cannot manage users or system configuration.</p>
+                    </div>
+                    <div className="bg-gray-800/40 border border-white/5 rounded-xl p-4">
+                        <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-1">Viewer</p>
+                        <p className="text-sm text-gray-300">Read-only access to dashboards and monitoring screens.</p>
+                    </div>
+                </div>
+            )}
             {error && <div className="bg-red-500/20 text-red-500 p-3 rounded mb-4">{error}</div>}
-            <div className="card overflow-hidden bg-gray-800/40 border border-white/5 rounded-xl">
-                <table className="w-full text-left border-collapse">
-                    <thead><tr className="text-gray-500 text-sm border-b border-white/10"><th className="p-4">User</th><th className="p-4">Email</th><th className="p-4">Role</th><th className="p-4">Status</th></tr></thead>
-                    <tbody>
-                        {users.map(user => (
-                            <tr key={user.username} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                                <td className="p-4 flex items-center gap-3"><div className="p-2 bg-gray-700 rounded-full"><User size={16} /></div><span className="font-bold">{user.username}</span></td>
-                                <td className="p-4 text-gray-400">{user.email}</td>
-                                <td className="p-4"><span className={`px-2 py-1 rounded text-xs font-bold flex items-center w-fit gap-1 ${user.role === 'admin' ? 'bg-nov-accent/20 text-nov-accent' : 'bg-gray-700 text-gray-300'}`}>{user.role === 'admin' ? <ShieldAlert size={12} /> : <Shield size={12} />}{user.role.toUpperCase()}</span></td>
-                                <td className="p-4"><span className="text-green-500 text-sm">Active</span></td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+            {canManageUsers && (
+                <div className="card overflow-hidden bg-gray-800/40 border border-white/5 rounded-xl">
+                    <table className="w-full text-left border-collapse">
+                        <thead><tr className="text-gray-500 text-sm border-b border-white/10"><th className="p-4">User</th><th className="p-4">Email</th><th className="p-4">Role</th><th className="p-4">Status</th></tr></thead>
+                        <tbody>
+                            {users.map(user => (
+                                <tr key={user.username} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                    <td className="p-4 flex items-center gap-3"><div className="p-2 bg-gray-700 rounded-full"><User size={16} /></div><span className="font-bold">{user.username}</span></td>
+                                    <td className="p-4 text-gray-400">{user.email}</td>
+                                    <td className="p-4"><span className={`px-2 py-1 rounded text-xs font-bold flex items-center w-fit gap-1 ${user.role === 'admin' ? 'bg-nov-accent/20 text-nov-accent' : user.role === 'operator' ? 'bg-amber-500/20 text-amber-400' : 'bg-gray-700 text-gray-300'}`}>{user.role === 'admin' ? <ShieldAlert size={12} /> : <Shield size={12} />}{user.role.toUpperCase()}</span></td>
+                                    <td className="p-4"><span className="text-green-500 text-sm">Active</span></td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
             {isOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
                     <div className="bg-gray-800 p-6 rounded-xl w-96 border border-gray-700 shadow-2xl">
@@ -221,6 +247,11 @@ function UsersTab() {
                             <input placeholder="Username" required className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 focus:border-nov-accent focus:outline-none" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} />
                             <input placeholder="Email" type="email" required className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 focus:border-nov-accent focus:outline-none" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
                             <input placeholder="Password" type="password" required className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 focus:border-nov-accent focus:outline-none" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
+                            <select className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 focus:border-nov-accent focus:outline-none" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}>
+                                <option value="viewer">Viewer</option>
+                                <option value="operator">Operator</option>
+                                <option value="admin">Admin</option>
+                            </select>
                             <div className="flex justify-end gap-2 mt-4">
                                 <button type="button" onClick={() => setIsOpen(false)} className="px-4 py-2 text-gray-400 hover:text-white">Cancel</button>
                                 <button type="submit" className="px-4 py-2 bg-nov-accent rounded-lg text-white font-bold">Create</button>
@@ -379,7 +410,8 @@ function WitsmlTab() {
     const getServerCredentials = () => ({
         server_url: form.server_url,
         username: form.username,
-        password: form.password || (editingConfig ? editingConfig.password : ''),
+        password: form.password || (editingConfig ? editingConfig.password : '') || '',
+        witsml_version: form.witsml_version || '1.4.1.1',
     });
 
     const handleBrowseWells = async () => {

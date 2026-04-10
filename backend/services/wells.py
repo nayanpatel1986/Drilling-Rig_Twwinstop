@@ -5,7 +5,7 @@ from datetime import datetime
 from database import get_db
 from db_models import Well, WellStatus
 from pydantic import BaseModel
-from auth.router import get_current_user
+from auth.router import get_current_user, require_operator_or_admin
 
 router = APIRouter(prefix="/wells", tags=["wells"])
 
@@ -30,7 +30,7 @@ class WellResponse(BaseModel):
         orm_mode = True
 
 @router.post("/", response_model=WellResponse)
-def create_well(well: WellCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+def create_well(well: WellCreate, db: Session = Depends(get_db), current_user = Depends(require_operator_or_admin)):
     # Check if active well exists
     active_well = db.query(Well).filter(Well.status == WellStatus.ACTIVE).first()
     if active_well:
@@ -61,7 +61,7 @@ def get_active_well(db: Session = Depends(get_db)):
     return well
 
 @router.put("/{well_id}/end", response_model=WellResponse)
-def end_well(well_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+def end_well(well_id: int, db: Session = Depends(get_db), current_user = Depends(require_operator_or_admin)):
     well = db.query(Well).filter(Well.id == well_id).first()
     if not well:
         raise HTTPException(status_code=404, detail="Well not found")

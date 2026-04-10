@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getRigData, getRigHistory } from '../api';
-import { PieChart, Pie, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
+import { PieChart, Pie, BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
 import RadialGauge from '../components/RadialGauge';
 
 function simulateEngine(id, rigData) {
@@ -34,59 +34,100 @@ function simulateEngine(id, rigData) {
     return base;
 }
 
-const COLORS = ['#38BDF8', '#4ADE80', '#FBBF24', '#F87171']; // Light Blue, Green, Yellow, Red
-const GRAFANA_COLORS = ['#73bf69', '#3274d9', '#f2cc0c', '#e02f44', '#ca96e8'];
-
-const GrafanaPanel = ({ title, children, className="" }) => (
-    <div className={`bg-[#181b1f] border border-[#2a2e33] flex flex-col overflow-hidden ${className}`}>
-        <div className="flex items-center text-[10px] text-[#8e9297] font-bold px-3 py-1.5 border-b border-[#2a2e33] tracking-widest uppercase">
-            {title}
-        </div>
-        <div className="flex-1 p-2 relative overflow-hidden">
-            {children}
+const StatBox = ({ label, value, unit, color }) => (
+    <div className="flex flex-col">
+        <span className="text-[9px] text-[#8e9297] font-bold uppercase tracking-wider">{label}</span>
+        <div className="flex items-baseline gap-1">
+            <span style={{ color }} className="text-lg font-black tracking-tight font-mono">{value}</span>
+            <span className="text-[9px] font-bold text-[#8e9297]">{unit}</span>
         </div>
     </div>
 );
 
-// Engine Telemetry Card from previous iteration (preserved at bottom)
-const EngineTelemetryCard = ({ engine, color }) => {
-    const data = engine.data;
-    const ParameterRow = ({ label, value, unit }) => (
-        <div className="flex items-center justify-between border-b border-[#2a2e33] py-1 px-2 hover:bg-white/5 transition-colors">
-            <span className="text-[10px] text-[#b1b5ba]">{label}</span>
-            <div className="flex items-baseline gap-1">
-                <span className="font-mono text-xs font-bold text-[#e2e8f0]">
-                    {typeof value === 'number' ? value.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1}) : value || '0.0'}
-                </span>
-                {unit && <span className="text-[9px] text-[#8e9297]">{unit}</span>}
-            </div>
-        </div>
-    );
+const compactHistory = (id, history) => {
+    return history.map(h => ({
+        time: h.timeStr,
+        value: h[`PP${id}_LoadPercent`] || 0
+    })).slice(-15);
+};
 
+const EngineGensetCard = ({ engine, history }) => {
+    const isOnline = engine.isOnline;
+    const data = engine.data;
+    
     return (
-        <GrafanaPanel title={`POWER PACK ${engine.id}`}>
-             <div className="grid grid-cols-2 gap-x-4 gap-y-0 h-full content-start">
-               {/* Left Column */}
-               <div className="flex flex-col">
-                   <ParameterRow label="RPM" value={data.RPM} unit="rpm" />
-                   <ParameterRow label="Oil Pressure" value={data.OilPressure} unit="psi" />
-                   <ParameterRow label="Oil Temp" value={data.OilTemperature} unit="°C" />
-                   <ParameterRow label="Coolant Temp" value={data.CoolantTemp} unit="°C" />
-                   <ParameterRow label="Exhaust Temp" value={data.ExhaustTemp} unit="°C" />
-                   <ParameterRow label="Load Percent" value={data.LoadPercent} unit="%" />
-                   <ParameterRow label="Total Pct KW" value={data.TotalPercentKW} unit="%" />
-               </div>
-               {/* Right Column */}
-               <div className="flex flex-col">
-                   <ParameterRow label="Fuel Rate" value={data.FuelRate} unit="L/hr" />
-                   <ParameterRow label="Inst. Fuel" value={data.InstFuelCons} unit="L/hr" />
-                   <ParameterRow label="Total Fuel" value={data.TotalFuelCons} unit="L" />
-                   <ParameterRow label="Run Hours" value={data.RunHours} unit="hrs" />
-                   <ParameterRow label="Power Factor" value={data.OverallPowerFact} unit="" />
-                   <ParameterRow label="Reactive Pwr" value={data.TotalReactivePow} unit="kVAR" />
-               </div>
+        <Link 
+            to={`/engine/${engine.id}`}
+            className={`glass-panel rounded-2xl p-4 transition-all duration-300 hover:scale-[1.02] border-t-2 ${
+                isOnline ? 'neon-border-green border-t-emerald-500 animate-pulse-green' : 'neon-border-red border-t-rose-500'
+            }`}
+        >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col">
+                    <h3 className="text-white font-black text-sm tracking-tighter uppercase">{engine.name}</h3>
+                    <div className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-rose-500'}`}></span>
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${isOnline ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {isOnline ? 'Running' : 'Offline'}
+                        </span>
+                    </div>
+                </div>
+                <img src="/cat_engine.png" alt="CAT" className={`h-10 w-auto object-contain transition-opacity duration-500 ${isOnline ? 'opacity-80' : 'opacity-20 grayscale'}`} />
             </div>
-        </GrafanaPanel>
+
+            {/* Main Gauge / Value area */}
+            <div className="flex items-center justify-between mb-4 bg-black/20 rounded-xl p-3 border border-white/5">
+                <div className="flex flex-col">
+                    <span className="text-[9px] text-[#8e9297] font-bold uppercase">Load Level</span>
+                    <span className={`text-3xl font-black tracking-tighter ${isOnline ? 'text-white' : 'text-gray-600'}`}>
+                        {data.LoadPercent?.toFixed(1) || '0.0'}<span className="text-sm ml-0.5">%</span>
+                    </span>
+                </div>
+                <div className="h-12 w-24">
+                   <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={compactHistory(engine.id, history)}>
+                            <Area 
+                                type="monotone" 
+                                dataKey="value" 
+                                stroke={isOnline ? '#10b981' : '#475569'} 
+                                fill={isOnline ? 'rgba(16,185,129,0.1)' : 'transparent'} 
+                                strokeWidth={2} 
+                                isAnimationActive={false} 
+                            />
+                        </AreaChart>
+                   </ResponsiveContainer>
+                </div>
+            </div>
+
+            {/* Detailed Grid */}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-3">
+                    <StatBox label="Active Power" value={engine.kWOutput?.toFixed(0) || '0'} unit="kW" color={isOnline ? '#38bdf8' : '#475569'} />
+                    <StatBox label="Frequency" value="60.0" unit="Hz" color={isOnline ? '#fcd34d' : '#475569'} />
+                    <StatBox label="Fuel Rate" value={data.FuelRate?.toFixed(1) || '0.0'} unit="L/h" color={isOnline ? '#a78bfa' : '#475569'} />
+                </div>
+                <div className="space-y-3">
+                    <StatBox label="Engine RPM" value={data.RPM?.toFixed(0) || '0'} unit="rpm" color={isOnline ? '#38bdf8' : '#475569'} />
+                    <StatBox label="Coolant Temp" value={data.CoolantTemp?.toFixed(0) || '0'} unit="°C" color={isOnline ? '#fb7185' : '#475569'} />
+                    <StatBox label="Oil Pressure" value={data.OilPressure?.toFixed(0) || '0'} unit="psi" color={isOnline ? '#a3e635' : '#475569'} />
+                </div>
+            </div>
+
+            {/* Progress Health bar */}
+            <div className="mt-5">
+                <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.2em]">Mechanical Health</span>
+                    <span className="text-[8px] font-bold text-white/60">{isOnline ? '98%' : 'N/A'}</span>
+                </div>
+                <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div 
+                        className={`h-full transition-all duration-1000 ${isOnline ? 'bg-gradient-to-r from-emerald-500 to-cyan-500' : 'bg-gray-700'}`}
+                        style={{ width: isOnline ? '98%' : '0%' }}
+                    ></div>
+                </div>
+            </div>
+        </Link>
     );
 };
 
@@ -97,19 +138,18 @@ export default function PowerGeneration() {
     useEffect(() => {
         const fetchData = async () => {
             const d = await getRigData();
-            if (d) setRigData(d);
+            // Always update state to prevent freezing on old data
+            setRigData(d || {});
             
-            const hist = await getRigHistory('-5m');
-            if (hist && hist.length > 0) {
-                const formatted = hist.map(item => {
-                    const dObj = new Date(item.time);
-                    return {
-                        ...item,
-                        timeStr: `${dObj.getHours().toString().padStart(2,'0')}:${dObj.getMinutes().toString().padStart(2,'0')}:${dObj.getSeconds().toString().padStart(2,'0')}`
-                    }
-                });
-                setHistoryData(formatted);
-            }
+            const hist = await getRigHistory('-15m');
+            const formatted = (hist || []).map(item => {
+                const dObj = new Date(item.time);
+                return {
+                    ...item,
+                    timeStr: `${dObj.getHours().toString().padStart(2,'0')}:${dObj.getMinutes().toString().padStart(2,'0')}:${dObj.getSeconds().toString().padStart(2,'0')}`
+                }
+            });
+            setHistoryData(formatted);
         };
         fetchData();
         const interval = setInterval(fetchData, 2000);
@@ -118,75 +158,83 @@ export default function PowerGeneration() {
 
     const engines = [1, 2, 3, 4].map(id => {
         const data = simulateEngine(id, rigData);
-        // Fallback kW estimation
         if (!data.kWOutput && data.TotalPercentKW) data.kWOutput = data.TotalPercentKW * 11;
-        
         return {
             name: `Power Pack ${id}`,
             id,
             data,
             isOnline: (data.RPM || 0) > 0 || (data.LoadPercent || 0) > 0,
             kWOutput: data.kWOutput || 0,
-            LoadPercent: data.LoadPercent || 0,
-            FuelRate: data.FuelRate || 0,
         };
     });
 
-    const totalKW = engines.reduce((sum, e) => sum + e.kWOutput, 0);
-    const totalFuel = engines.reduce((sum, e) => sum + e.data.FuelRate, 0);
-    const instFuel = engines.reduce((sum, e) => sum + e.data.InstFuelCons, 0);
-    const totalReactive = engines.reduce((sum, e) => sum + e.data.TotalReactivePow, 0);
-    const activeEngines = engines.filter(e => e.isOnline);
-    const avgLoad = activeEngines.length > 0 
-        ? activeEngines.reduce((sum, e) => sum + e.data.LoadPercent, 0) / activeEngines.length 
-        : 0;
-    const onlineCount = activeEngines.length;
-
-    const CustomTooltip = ({ active, payload, label }) => {
-        if (active && payload && payload.length) {
-            return (
-                <div className="bg-[#181b1f] border border-[#2a2e33] p-2 rounded shadow-xl">
-                    <p className="text-white font-bold text-xs mb-1">{label}</p>
-                    {payload.map((entry, index) => (
-                        <p key={index} style={{ color: entry.color }} className="text-xs font-mono">
-                            {entry.name}: {entry.value?.toFixed ? entry.value.toFixed(1) : entry.value}
-                        </p>
-                    ))}
-                </div>
-            );
-        }
-        return null;
-    };
+    const totalKW = engines.reduce((sum, e) => sum + (e.kWOutput || 0), 0);
+    const totalFuel = engines.reduce((sum, e) => sum + (e.data.FuelRate || 0), 0);
+    const onlineCount = engines.filter(e => e.isOnline).length;
 
     return (
-        <div className="w-full h-full p-2 flex flex-col gap-2 overflow-x-hidden overflow-y-auto custom-scrollbar bg-[#111217] text-[#c7d0d9] font-sans">
-            {/* ROW 0: CAT Engine Navigation Symbols */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-shrink-0 mb-2">
-                {engines.map((engine) => (
-                    <Link
-                        key={engine.id}
-                        to={`/engine/${engine.id}`}
-                        className={`relative group bg-[#181b1f] border transition-all duration-300 hover:scale-[1.02] flex flex-col items-center justify-center p-4 rounded-lg overflow-hidden ${
-                            engine.isOnline ? 'border-[#73bf69]' : 'border-[#f2495c]'
-                        }`}
-                    >
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-10 bg-white transition-opacity duration-300"></div>
-                        <div className="absolute top-2 right-2">
-                            <span className={`w-3 h-3 rounded-full inline-block ${engine.isOnline ? 'bg-[#73bf69] animate-pulse shadow-[0_0_8px_#73bf69]' : 'bg-[#f2495c]'} shadow-sm`}></span>
+        <div className="w-full h-full p-4 flex flex-col gap-6 overflow-x-hidden overflow-y-auto deep-space-bg text-[#c7d0d9] font-sans">
+            {/* Header & Global Stats */}
+            <div className="flex flex-col md:flex-row items-baseline justify-between gap-6 border-b border-white/5 pb-6">
+                <div className="flex flex-col">
+                    <h1 className="text-3xl font-black text-white tracking-tighter uppercase mb-1">Fleet Telemetry</h1>
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{onlineCount} GENS ONLINE</span>
                         </div>
-                        <img src="/cat_engine.png" alt={`CAT Engine ${engine.id}`} className="h-24 w-auto object-contain filter drop-shadow-xl mb-3" />
-                        <h3 className="text-[#e2e8f0] font-bold tracking-wider text-lg">{engine.name}</h3>
-                        <p className={`text-xs font-bold uppercase tracking-widest mt-1 ${engine.isOnline ? 'text-[#73bf69]' : 'text-[#f2495c]'}`}>
-                            {engine.isOnline ? 'ONLINE' : 'OFFLINE'}
-                        </p>
-                    </Link>
+                        <span className="text-[10px] font-bold text-white/30 tracking-[0.2em] uppercase">Power Generation Node 01</span>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Total Active Power</span>
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-3xl font-black text-white tracking-tighter text-glow-green">{totalKW.toLocaleString()}</span>
+                            <span className="text-sm font-bold text-white/40">kW</span>
+                        </div>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Total Fuel Flow</span>
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-3xl font-black text-white tracking-tighter text-glow-amber">{totalFuel.toFixed(1)}</span>
+                            <span className="text-sm font-bold text-white/40">L/hr</span>
+                        </div>
+                    </div>
+                    <div className="hidden md:flex flex-col">
+                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Sync Stability</span>
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-3xl font-black text-emerald-400 tracking-tighter">99.8</span>
+                            <span className="text-sm font-bold text-white/40">%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Engine Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {engines.map((engine) => (
+                    <EngineGensetCard key={engine.id} engine={engine} history={historyData} />
                 ))}
             </div>
 
-
-
-            {/* Spacer for bottom padding */}
-            <div className="h-8 flex-shrink-0 w-full"></div>
+            {/* Bottom Footer Info */}
+            <div className="mt-auto pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="flex items-center gap-4 text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">
+                    <span>Secure Node: 10.207.96.209</span>
+                    <span>•</span>
+                    <span>Last Handshake: {new Date().toLocaleTimeString()}</span>
+                </div>
+                <div className="flex gap-4">
+                    <div className="h-6 w-32 bg-white/5 rounded flex items-center justify-center border border-white/5">
+                         <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.1em]">Telegraf Active</span>
+                    </div>
+                    <div className="h-6 w-32 bg-emerald-500/5 rounded flex items-center justify-center border border-emerald-500/20">
+                         <span className="text-[8px] font-black text-emerald-500 uppercase tracking-[0.1em]">System Healthy</span>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

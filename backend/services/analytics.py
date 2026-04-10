@@ -66,7 +66,11 @@ class AnalyticsEngine:
                         if config and config.server_url:
                             custom_mappings.clear()
                             for mapping in config.channel_mappings:
-                                custom_mappings[mapping.witsml_mnemonic.upper()] = mapping.app_parameter
+                                custom_mappings[mapping.witsml_mnemonic.upper()] = {
+                                    "tag": mapping.app_parameter,
+                                    "scale": mapping.scale_factor if mapping.scale_factor is not None else 1.0,
+                                    "offset": mapping.offset if mapping.offset is not None else 0.0
+                                }
                                 
                             config_changed = (
                                 not self.witsml_client
@@ -107,9 +111,23 @@ class AnalyticsEngine:
                 if not LIVE_MODE:
                     custom_mappings = {}
                 
-                print(f"Pipeline: DataFrame has {len(df)} rows, columns: {list(df.columns[:10])}", flush=True)
+                print(f"Pipeline: DataFrame has {len(df)} rows, first row: {df.to_dict('records')[0]}", flush=True)
                 
-                df = MnemonicMapper.map_dataframe(df, custom_mappings)
+                # Apply Scaling and Offset from DB configuration
+                for col in df.columns:
+                    m_upper = str(col).upper()
+                    if m_upper in custom_mappings:
+                        m_info = custom_mappings[m_upper]
+                        try:
+                            # Convert to numeric first to ensure math works
+                            numeric_series = pd.to_numeric(df[col], errors='coerce')
+                            df[col] = (numeric_series * m_info['scale']) + m_info['offset']
+                        except Exception as e:
+                            print(f"Scaling Error on {col}: {e}")
+
+                # Create a simple name mapping for the MnemonicMapper
+                rename_map = {m: info['tag'] for m, info in custom_mappings.items()}
+                df = MnemonicMapper.map_dataframe(df, rename_map)
                 
                 # 3. Calculate Digital Twin Parameters
                 df = self._calculate_derived_params(df)

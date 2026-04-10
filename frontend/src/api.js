@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
     baseURL: '/api', // Vite proxy handles redirection to http://localhost:8000
-    timeout: 10000, // Increased to 10 seconds for stable PLC write operations
+    timeout: 30000, // 30 seconds — needed for WITSML SOAP browsing (WSDL load + query on slow rig networks)
 });
 
 // Request interceptor to add Token
@@ -24,6 +24,11 @@ export const loginUser = async (username, password) => {
 
 export const registerUser = async (username, email, password) => {
     const response = await api.post('/auth/register', { username, email, password });
+    return response.data;
+}
+
+export const createUser = async (username, email, password, role = 'viewer') => {
+    const response = await api.post('/auth/users', { username, email, password, role });
     return response.data;
 }
 
@@ -198,18 +203,30 @@ export const bulkUpdateRegisters = async (deviceId, registers) => {
 }
 
 // ── Modbus Control ──────────────────────────────────────────
-export const writeModbusCoil = async (deviceId, address, value) => {
-    const response = await api.post('/modbus/write-coil', { device_id: deviceId, address, value });
+export const writeModbusCoil = async (deviceId, address, value, pin = null) => {
+    const headers = pin ? { 'X-Safety-PIN': pin } : {};
+    const response = await api.post('/modbus/write-coil', 
+        { device_id: deviceId, address, value },
+        { headers }
+    );
     return response.data;
 }
 
-export const writeModbusRegister = async (deviceId, address, value) => {
-    const response = await api.post('/modbus/write-register', { device_id: deviceId, address, value });
+export const writeModbusRegister = async (deviceId, address, value, pin = null) => {
+    const headers = pin ? { 'X-Safety-PIN': pin } : {};
+    const response = await api.post('/modbus/write-register', 
+        { device_id: deviceId, address, value },
+        { headers }
+    );
     return response.data;
 }
 
-export const writeModbusFloat = async (deviceId, address, value) => {
-    const response = await api.post('/modbus/write-float', { device_id: deviceId, address, value });
+export const writeModbusFloat = async (deviceId, address, value, pin = null) => {
+    const headers = pin ? { 'X-Safety-PIN': pin } : {};
+    const response = await api.post('/modbus/write-float', 
+        { device_id: deviceId, address, value },
+        { headers }
+    );
     return response.data;
 }
 

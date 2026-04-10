@@ -43,9 +43,9 @@ docker-compose logs -f backend
 
 ### Accessing the Application
 
-- **Frontend Dashboard**: http://localhost:3001
-- **Backend API Docs**: http://localhost:8000/docs
-- **InfluxDB UI**: http://localhost:8086 (User: admin, Pass: password123)
+- **Frontend Dashboard**: http://localhost:8081
+- **Backend API Docs**: http://localhost:8000/docs when `ENV=development`
+- **InfluxDB UI**: http://localhost:8087 (User: admin, Pass: password123)
 - **WebSocket Stats**: http://localhost:8000/ws/stats
 
 ### Verify Performance
@@ -111,8 +111,12 @@ See [OPTIMIZATION_SUMMARY.md](OPTIMIZATION_SUMMARY.md) for detailed analysis.
 cd frontend
 npm install
 npm run dev
-# Access at http://localhost:5173
+# Access at http://localhost:3001
 ```
+
+The Vite dev server proxies API traffic to `http://localhost:8000` by default.
+If your backend is reachable on a different host, set `VITE_API_PROXY_TARGET`
+and optionally `VITE_WS_PROXY_TARGET` before running `npm run dev`.
 
 ### Run Backend Locally
 ```bash
@@ -121,6 +125,14 @@ pip install -r requirements.txt --break-system-packages
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 # API docs at http://localhost:8000/docs
 ```
+
+Backend authentication now requires `JWT_SECRET` to be set before startup.
+Copy `.env.example` to `.env` and provide a strong secret for local and
+production environments.
+
+The Docker stack defaults the backend to `ENV=production`, which disables
+public registration after the initial bootstrap user and hides `/docs`.
+Set `ENV=development` only when you intentionally want development behavior.
 
 ### Test WebSocket Connection
 ```javascript

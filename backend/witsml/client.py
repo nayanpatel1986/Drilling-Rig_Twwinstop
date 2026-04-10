@@ -28,7 +28,11 @@ class WitsmlClient:
 
             session = ReqSession()
             if self.username:
-                session.auth = HTTPBasicAuth(self.username, self.password)
+                if "\\" in self.username:
+                    from requests_ntlm import HttpNtlmAuth
+                    session.auth = HttpNtlmAuth(self.username, self.password)
+                else:
+                    session.auth = HTTPBasicAuth(self.username, self.password)
             wsdl_url = self.url + '?WSDL'
             transport = Transport(session=session, timeout=12)
             self._zeep_client = ZeepClient(wsdl_url, transport=transport)

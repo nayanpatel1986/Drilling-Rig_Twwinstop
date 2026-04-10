@@ -241,11 +241,15 @@ def test_connection(
         from zeep import Client as ZeepClient
         from zeep.transports import Transport
         from requests import Session as ReqSession
-        from requests.auth import HTTPBasicAuth as ReqBasicAuth
-
+        
         session = ReqSession()
         if req.username:
-            session.auth = ReqBasicAuth(req.username, req.password)
+            if "\\" in req.username:
+                from requests_ntlm import HttpNtlmAuth
+                session.auth = HttpNtlmAuth(req.username, req.password)
+            else:
+                from requests.auth import HTTPBasicAuth
+                session.auth = HTTPBasicAuth(req.username, req.password)
         
         wsdl_url = req.server_url + '?WSDL'
         transport = Transport(session=session, timeout=8)
@@ -292,8 +296,18 @@ class WitsmlBrowseRequest(BaseModel):
     server_url: str
     username: Optional[str] = None
     password: Optional[str] = None
+    witsml_version: str = "1.4.1.1"
     well_uid: Optional[str] = None
     wellbore_uid: Optional[str] = None
+
+
+def _get_ns_and_version(witsml_version: str):
+    """Return (xmlns_namespace, xml_version_attr) for a given WITSML version string."""
+    v = (witsml_version or "1.4.1.1").strip()
+    if v.startswith("1.3"):
+        return "http://www.witsml.org/schemas/131", "1.3.1.1"
+    # Default: 1.4.1.1
+    return "http://www.witsml.org/schemas/1411", "1.4.1.1"
 
 
 def _get_zeep_client_for_browse(req):
@@ -301,14 +315,50 @@ def _get_zeep_client_for_browse(req):
     from zeep import Client as ZeepClient
     from zeep.transports import Transport
     from requests import Session as ReqSession
-    from requests.auth import HTTPBasicAuth as ReqBasicAuth
 
     session = ReqSession()
     if req.username:
-        session.auth = ReqBasicAuth(req.username, req.password)
+        if "\\" in req.username:
+            from requests_ntlm import HttpNtlmAuth
+            session.auth = HttpNtlmAuth(req.username, req.password)
+        else:
+            from requests.auth import HTTPBasicAuth
+            session.auth = HTTPBasicAuth(req.username, req.password)
+            
     wsdl_url = req.server_url + '?WSDL'
-    transport = Transport(session=session, timeout=10)
+    transport = Transport(session=session, timeout=15)
     return ZeepClient(wsdl_url, transport=transport)
+
+
+def _parse_xml_elements(xml_str: str, tag: str, primary_ns: str) -> list:
+    """
+    Parse XML and find all elements with the given tag.
+    Tries primary_ns first, then the alternate namespace, then falls back
+    to no-namespace (plain tag search). Returns list of ET elements.
+    """
+    import xml.etree.ElementTree as ET
+
+    alt_ns = (
+        "http://www.witsml.org/schemas/131"
+        if primary_ns != "http://www.witsml.org/schemas/131"
+        else "http://www.witsml.org/schemas/1411"
+    )
+
+    root = ET.fromstring(xml_str)
+
+    # 1. Try primary namespace
+    found = root.findall(f'.//{{' + primary_ns + f'}}{tag}')
+    if found:
+        return found
+
+    # 2. Try alternate namespace
+    found = root.findall(f'.//{{' + alt_ns + f'}}{tag}')
+    if found:
+        return found
+
+    # 3. Try no namespace (some non-compliant servers)
+    found = root.findall(f'.//{tag}')
+    return found
 
 
 @router.post("/browse/wells")
@@ -318,25 +368,27 @@ def browse_wells(
 ):
     """Query the WITSML server for all available wells."""
     try:
+        xmlns, ver_attr = _get_ns_and_version(req.witsml_version)
         client = _get_zeep_client_for_browse(req)
-        query = '<wells xmlns="http://www.witsml.org/schemas/131" version="1.3.1"><well uid=""><name/></well></wells>'
+        query = f'<wells xmlns="{xmlns}" version="{ver_attr}"><well uid=""><name/></well></wells>'
         result = client.service.WMLS_GetFromStore(
             WMLtypeIn='well', QueryIn=query,
             OptionsIn='returnElements=id-only', CapabilitiesIn=''
         )
         wells = []
         if result.XMLout:
-            import xml.etree.ElementTree as ET
-            root = ET.fromstring(result.XMLout)
-            ns = {'w': 'http://www.witsml.org/schemas/131'}
-            for well in root.findall('.//w:well', ns):
+            for well in _parse_xml_elements(result.XMLout, 'well', xmlns):
                 uid = well.get('uid', '')
-                name_el = well.find('w:name', ns)
-                name = name_el.text if name_el is not None and name_el.text else uid
-                wells.append({"uid": uid, "name": name})
+                # name element can be in any namespace — check text regardless
+                name = next(
+                    (el.text for el in well if el.tag.endswith('}name') or el.tag == 'name'),
+                    None
+                ) or uid
+                if uid:
+                    wells.append({"uid": uid, "name": name})
         return {"status": "success", "wells": wells}
     except Exception as e:
-        return {"status": "error", "message": str(e)[:300], "wells": []}
+        return {"status": "error", "message": str(e)[:400], "wells": []}
 
 
 @router.post("/browse/wellbores")
@@ -348,25 +400,26 @@ def browse_wellbores(
     if not req.well_uid:
         return {"status": "error", "message": "well_uid is required", "wellbores": []}
     try:
+        xmlns, ver_attr = _get_ns_and_version(req.witsml_version)
         client = _get_zeep_client_for_browse(req)
-        query = f'<wellbores xmlns="http://www.witsml.org/schemas/131" version="1.3.1"><wellbore uidWell="{req.well_uid}" uid=""><name/></wellbore></wellbores>'
+        query = f'<wellbores xmlns="{xmlns}" version="{ver_attr}"><wellbore uidWell="{req.well_uid}" uid=""><name/></wellbore></wellbores>'
         result = client.service.WMLS_GetFromStore(
             WMLtypeIn='wellbore', QueryIn=query,
             OptionsIn='returnElements=id-only', CapabilitiesIn=''
         )
         wellbores = []
         if result.XMLout:
-            import xml.etree.ElementTree as ET
-            root = ET.fromstring(result.XMLout)
-            ns = {'w': 'http://www.witsml.org/schemas/131'}
-            for wb in root.findall('.//w:wellbore', ns):
+            for wb in _parse_xml_elements(result.XMLout, 'wellbore', xmlns):
                 uid = wb.get('uid', '')
-                name_el = wb.find('w:name', ns)
-                name = name_el.text if name_el is not None and name_el.text else uid
-                wellbores.append({"uid": uid, "name": name})
+                name = next(
+                    (el.text for el in wb if el.tag.endswith('}name') or el.tag == 'name'),
+                    None
+                ) or uid
+                if uid:
+                    wellbores.append({"uid": uid, "name": name})
         return {"status": "success", "wellbores": wellbores}
     except Exception as e:
-        return {"status": "error", "message": str(e)[:300], "wellbores": []}
+        return {"status": "error", "message": str(e)[:400], "wellbores": []}
 
 
 @router.post("/browse/logs")
@@ -378,25 +431,26 @@ def browse_logs(
     if not req.well_uid or not req.wellbore_uid:
         return {"status": "error", "message": "well_uid and wellbore_uid are required", "logs": []}
     try:
+        xmlns, ver_attr = _get_ns_and_version(req.witsml_version)
         client = _get_zeep_client_for_browse(req)
-        query = f'<logs xmlns="http://www.witsml.org/schemas/131" version="1.3.1"><log uidWell="{req.well_uid}" uidWellbore="{req.wellbore_uid}" uid=""><name/></log></logs>'
+        query = f'<logs xmlns="{xmlns}" version="{ver_attr}"><log uidWell="{req.well_uid}" uidWellbore="{req.wellbore_uid}" uid=""><name/></log></logs>'
         result = client.service.WMLS_GetFromStore(
             WMLtypeIn='log', QueryIn=query,
             OptionsIn='returnElements=id-only', CapabilitiesIn=''
         )
         logs = []
         if result.XMLout:
-            import xml.etree.ElementTree as ET
-            root = ET.fromstring(result.XMLout)
-            ns = {'w': 'http://www.witsml.org/schemas/131'}
-            for log in root.findall('.//w:log', ns):
+            for log in _parse_xml_elements(result.XMLout, 'log', xmlns):
                 uid = log.get('uid', '')
-                name_el = log.find('w:name', ns)
-                name = name_el.text if name_el is not None and name_el.text else uid
-                logs.append({"uid": uid, "name": name})
+                name = next(
+                    (el.text for el in log if el.tag.endswith('}name') or el.tag == 'name'),
+                    None
+                ) or uid
+                if uid:
+                    logs.append({"uid": uid, "name": name})
         return {"status": "success", "logs": logs}
     except Exception as e:
-        return {"status": "error", "message": str(e)[:300], "logs": []}
+        return {"status": "error", "message": str(e)[:400], "logs": []}
 
 
 @router.post("/", response_model=WitsmlConfigResponse)

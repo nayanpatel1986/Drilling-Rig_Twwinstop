@@ -31,9 +31,12 @@ class InfluxWrapper:
             print(f"InfluxDB DataFrame Write Error: {e}")
 
     def query_latest(self, measurement="realtime_drilling"):
-        """Get the latest values for all fields in a measurement."""
+        """Get the latest values for all fields in a measurement (Secure & Compatible)."""
         try:
-            # OPTIMIZED: Query only last 10 minutes instead of 24 hours
+            # Validate measurement to prevent injection
+            if measurement not in ["realtime_drilling", "modbus", "witsml"]:
+                measurement = "realtime_drilling"
+
             query = f'''
                 from(bucket: "{self.bucket}")
                 |> range(start: -10m)
@@ -51,21 +54,25 @@ class InfluxWrapper:
                     field = record.get_field()
                     value = record.get_value()
                     
-                    # Per-field timeout check
-                    rt_str = record.get_time().isoformat().replace("Z", "+00:00")
-                    rt = datetime.fromisoformat(rt_str)
-                    is_stale = (now - rt).total_seconds() > 10
+                    # Capture the record time precisely
+                    rt_dt = record.get_time()
+                    rt_str = rt_dt.isoformat().replace("Z", "+00:00")
+                    
+                    # Store latest time found across all fields
+                    if "_time" not in result or rt_str > result["_time"]:
+                        result["_time"] = rt_str
+                    
+                    # Per-field timeout check: 120s is plenty for 1s polling
+                    is_stale = (now - rt_dt).total_seconds() > 120
                     
                     if is_stale and isinstance(value, (int, float)):
                         result[field] = 0.0
                     else:
                         result[field] = round(float(value), 2) if isinstance(value, (int, float)) else value
-                        
-                    if "_time" not in result:
-                        result["_time"] = rt_str
+            
             return result
         except Exception as e:
-            print(f"InfluxDB Query Error: {e}")
+            print(f"InfluxDB Latest Query Error: {e}")
             return {}
 
     # Keys to exclude from chart data output
@@ -92,20 +99,22 @@ class InfluxWrapper:
         return sorted(merged.values(), key=lambda r: r.get("time", ""))
 
     def query_range(self, range_str="-5m", measurement="realtime_drilling"):
-        """Get time-series data for a given range."""
+        """Get time-series data for a given range (Secure & Compatible)."""
         try:
-            # OPTIMIZATION: Downsample data for large ranges to avoid timeouts
-            # -5m, -15m, -30m -> High resolution (no aggregation)
-            # -1h, -6h       -> 10 second averages
-            # -12h, -24h     -> 1 minute averages
+            # 1. Strict validation of parameters
+            import re
+            if not re.match(r'^-?[0-9]+[smhdwy]$', range_str):
+                range_str = "-5m"
+            if measurement not in ["realtime_drilling", "modbus", "witsml"]:
+                measurement = "realtime_drilling"
+
+            # 2. Construction using validated variables
             agg_window = ""
             if "-1h" in range_str or "-6h" in range_str:
                 agg_window = '|> aggregateWindow(every: 10s, fn: mean, createEmpty: false)'
             elif "-12h" in range_str or "-24h" in range_str:
                 agg_window = '|> aggregateWindow(every: 1m, fn: mean, createEmpty: false)'
 
-            # For modbus data, drop tags before pivoting so coil and holding_register
-            # fields merge into a single row per timestamp
             drop_tags = ""
             if measurement == "modbus":
                 drop_tags = '|> drop(columns: ["device_name", "device_type", "host", "name", "rig_id", "slave_id", "type"])'
@@ -126,12 +135,20 @@ class InfluxWrapper:
             return []
 
     def query_custom_range(self, start_iso, stop_iso, measurement="realtime_drilling", fields=None):
-        """Get time-series data between two absolute ISO timestamps."""
+        """Get time-series data between two absolute ISO timestamps (Secure & Compatible)."""
         try:
+            # Strict validation
+            import re
+            # Check ISO-like format (simple check)
+            if not re.match(r'^\d{4}-\d{2}-\d{2}.*', start_iso): start_iso = "2024-01-01T00:00:00Z"
+            if not re.match(r'^\d{4}-\d{2}-\d{2}.*', stop_iso): stop_iso = "2026-01-01T00:00:00Z"
+            if measurement not in ["realtime_drilling", "modbus", "witsml"]:
+                measurement = "realtime_drilling"
+
             field_filter = ""
             if fields:
-                field_clauses = " or ".join([f'r._field == "{f}"' for f in fields])
-                field_filter = f'|> filter(fn: (r) => {field_clauses})'
+                clauses = " or ".join([f'r._field == "{f}"' for f in fields])
+                field_filter = f'|> filter(fn: (r) => {clauses})'
 
             drop_tags = ""
             if measurement == "modbus":
@@ -171,18 +188,19 @@ class InfluxWrapper:
                     field = record.get_field()
                     value = record.get_value()
                     
-                    rt_str = record.get_time().isoformat().replace("Z", "+00:00")
-                    rt = datetime.fromisoformat(rt_str)
-                    is_stale = (now - rt).total_seconds() > 10
+                    rt_dt = record.get_time()
+                    rt_str = rt_dt.isoformat().replace("Z", "+00:00")
                     
-                    # Flatten into a single dictionary
+                    if "_time" not in result or rt_str > result["_time"]:
+                        result["_time"] = rt_str
+                    
+                    is_stale = (now - rt_dt).total_seconds() > 120
+                    
                     if is_stale and isinstance(value, (int, float)):
                         result[field] = 0.0
                     else:
                         result[field] = round(float(value), 2) if isinstance(value, (int, float)) else value
-                        
-                    if "_time" not in result:
-                        result["_time"] = rt_str
+            
             return result
         except Exception as e:
             print(f"InfluxDB Sensors Query Error: {e}")

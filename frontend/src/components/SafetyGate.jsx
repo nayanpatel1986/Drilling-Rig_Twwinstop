@@ -15,11 +15,11 @@ const SafetyGate = ({ isOpen, onClose, onSuccess, title = "Safety Override Requi
         setLoading(true);
         setError(null);
         try {
-            // In a real app, this would verify against a backend
             const response = await axios.post('/api/auth/verify-pin', { pin });
             if (response.data.success) {
+                const verifiedPin = pin;
                 setPin('');
-                onSuccess();
+                onSuccess(verifiedPin);
             }
         } catch (err) {
             setError(err.response?.data?.detail || "Invalid Manager PIN");

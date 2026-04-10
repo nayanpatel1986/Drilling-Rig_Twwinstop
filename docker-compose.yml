@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Time-Series Database - Isolated from network, accessible only via localhost
   influxdb:
@@ -68,13 +66,14 @@ services:
     env_file:
       - .env
     environment:
+      - ENV=${ENV:-production}
       - INFLUX_URL=http://influxdb:8086
       - INFLUX_TOKEN=${INFLUXDB_TOKEN:-my-super-secret-auth-token}
       - LIVE_MODE=${LIVE_MODE:-true}
       - TELEGRAF_CONF_PATH=/telegraf-config/telegraf.conf
-      - JWT_SECRET=${JWT_SECRET}
-      - CORS_ORIGINS=${CORS_ORIGINS}
-      - MANAGER_PIN=${MANAGER_PIN}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:8081,http://127.0.0.1:8081,http://localhost:3001,http://127.0.0.1:3001}
+      - MANAGER_PIN=${MANAGER_PIN:?MANAGER_PIN must be set}
     depends_on:
       - influxdb
       - mosquitto

@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../api';
 import { Lock, User } from 'lucide-react';
+import { storeAuthSession } from '../auth';
 
-export default function Login({ setAuth }) {
+export default function Login({ setAuth, setRole }) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -13,9 +14,9 @@ export default function Login({ setAuth }) {
         e.preventDefault();
         try {
             const data = await loginUser(username, password);
-            localStorage.setItem('token', data.access_token);
-            localStorage.setItem('user', username);
+            storeAuthSession(data);
             setAuth(true);
+            setRole(data.role);
             navigate('/');
         } catch (err) {
             setError('Invalid credentials');

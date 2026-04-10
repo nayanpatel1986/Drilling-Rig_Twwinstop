@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from database import get_db
 from db_models import ModbusDevice, ModbusRegister, User
-from auth.router import get_current_user
+from auth.router import get_current_user, require_operator_or_admin
 from pydantic import BaseModel
 from typing import List, Optional
+import os
 from services.modbus_control import modbus_writer
 
 router = APIRouter(prefix="/modbus", tags=["Modbus Write Control"])
@@ -31,12 +32,17 @@ class WriteFloatRequest(BaseModel):
     address: int
     value: float
 
-# ── Helper for admin check ───────────────────────────────
+# ── Safety Dependencies ───────────────────────────────────
 
-def require_admin(current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required for PLC control")
-    return current_user
+async def require_safety_pin(x_safety_pin: Optional[str] = Header(None, alias="X-Safety-PIN")):
+    manager_pin = os.getenv("MANAGER_PIN", "").strip()
+    if not manager_pin:
+        # If not configured, we allow in dev but should fail in prod. 
+        # For this case, we expect it to be there.
+        return
+        
+    if x_safety_pin != manager_pin:
+        raise HTTPException(status_code=401, detail="Valid Manager PIN required for this operation")
 
 # ── API Endpoints ──────────────────────────────────────────
 
@@ -44,7 +50,8 @@ def require_admin(current_user: User = Depends(get_current_user)):
 async def write_coil(
     payload: WriteCoilRequest,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin)
+    _: User = Depends(require_operator_or_admin),
+    __: None = Depends(require_safety_pin)
 ):
     """Write a boolean (On/Off) value to a Modbus Coil (0x)."""
     device = db.query(ModbusDevice).filter(ModbusDevice.id == payload.device_id).first()
@@ -71,7 +78,8 @@ async def write_coil(
 async def write_register(
     payload: WriteRegisterRequest,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin)
+    _: User = Depends(require_operator_or_admin),
+    __: None = Depends(require_safety_pin)
 ):
     """Write a single 16-bit integer (Set Point) to a Modbus Register (4x)."""
     device = db.query(ModbusDevice).filter(ModbusDevice.id == payload.device_id).first()
@@ -110,7 +118,8 @@ async def write_register(
 async def write_registers_bulk(
     payload: WriteBulkRegistersRequest,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin)
+    _: User = Depends(require_operator_or_admin),
+    __: None = Depends(require_safety_pin)
 ):
     """Write multiple 16-bit integers to Modbus Holding Registers (4x)."""
     device = db.query(ModbusDevice).filter(ModbusDevice.id == payload.device_id).first()
@@ -137,7 +146,8 @@ async def write_registers_bulk(
 async def write_float(
     payload: WriteFloatRequest,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin)
+    _: User = Depends(require_operator_or_admin),
+    __: None = Depends(require_safety_pin)
 ):
     """Write a 32-bit floating point value (REAL) to Modbus Holding Registers (4x)."""
     device = db.query(ModbusDevice).filter(ModbusDevice.id == payload.device_id).first()

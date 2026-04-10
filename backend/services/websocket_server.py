@@ -133,14 +133,32 @@ ws_manager = WebSocketManager()
 
 
 # ============ FastAPI Integration ============
+from auth.utils import SECRET_KEY, ALGORITHM
+from jose import jwt, JWTError
 
 async def websocket_endpoint(websocket: WebSocket):
     """
-    WebSocket endpoint for real-time drilling data
+    WebSocket endpoint for real-time drilling data (Authenticated)
     """
+    token = websocket.query_params.get('token')
     
+    if not token:
+        await websocket.close(code=4003) # Unauthorized
+        return
+
+    try:
+        # Verify token
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            await websocket.close(code=4003)
+            return
+    except JWTError:
+        await websocket.close(code=4003)
+        return
+        
     # Get client ID from query params if provided
-    client_id = websocket.query_params.get('client_id')
+    client_id = websocket.query_params.get('client_id') or username
     
     await ws_manager.connect(websocket, client_id)
     

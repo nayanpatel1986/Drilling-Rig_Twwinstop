@@ -8,9 +8,7 @@ import os
 # Secure secret key from environment
 SECRET_KEY = os.getenv("JWT_SECRET")
 if not SECRET_KEY:
-    # Use a warning in dev, but in a real prod system we should fail
-    print("WARNING: JWT_SECRET environment variable is not set. Using a temporary insecure key.")
-    SECRET_KEY = "insecure-fallback-key-change-me-immediately"
+    raise RuntimeError("JWT_SECRET environment variable is mandatory for secure authentication.")
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440 # 24 hours

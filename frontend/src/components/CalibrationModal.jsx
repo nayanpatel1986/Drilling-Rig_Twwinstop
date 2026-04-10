@@ -1,37 +1,50 @@
 import React, { useState } from 'react';
 import { X, Target, RefreshCw, Save, AlertCircle } from 'lucide-react';
 import { writeModbusCoil, writeModbusFloat, writeModbusRegister } from '../api';
+import SafetyGate from './SafetyGate';
 
 const CalibrationModal = ({ isOpen, onClose, data }) => {
     const [hValues, setHValues] = useState({ h1: '', h2: '', h3: '' });
     const [loading, setLoading] = useState({});
     const [error, setError] = useState(null);
+    const [showSafetyGate, setShowSafetyGate] = useState(false);
+    const [pendingAction, setPendingAction] = useState(null);
 
     if (!isOpen) return null;
 
     const deviceId = 1; // Twinstop Device ID
 
-    const handleAction = async (type, name, address, value) => {
+    const handleAction = (type, name, address, value) => {
+        setPendingAction({ type, name, address, value });
+        setShowSafetyGate(true);
+    };
+
+    const executeAction = async (pin) => {
+        if (!pendingAction) return;
+        const { type, name, address, value } = pendingAction;
+        setPendingAction(null);
+        setShowSafetyGate(false);
+
         setLoading(prev => ({ ...prev, [name]: true }));
         setError(null);
         try {
             let res;
             if (type === 'coil') {
-                res = await writeModbusCoil(deviceId, address, value);
+                res = await writeModbusCoil(deviceId, address, value, pin);
             } else if (type === 'float') {
-                res = await writeModbusFloat(deviceId, address, parseFloat(value));
+                res = await writeModbusFloat(deviceId, address, parseFloat(value), pin);
             } else if (type === 'pulse') {
                 // Send 1 (Trigger)
-                res = await writeModbusRegister(deviceId, address, 1);
+                res = await writeModbusRegister(deviceId, address, 1, pin);
                 if (res.success) {
                     // Wait 500ms
                     await new Promise(resolve => setTimeout(resolve, 500));
                     // Send 0 (Return to zero)
-                    await writeModbusRegister(deviceId, address, 0);
+                    await writeModbusRegister(deviceId, address, 0, pin);
                 }
             }
             
-            if (!res.success) {
+            if (res && !res.success) {
                 setError(`${name} failed: ${res.error}`);
             }
         } catch (err) {
@@ -166,6 +179,13 @@ const CalibrationModal = ({ isOpen, onClose, data }) => {
                     </p>
                 </div>
             </div>
+
+            <SafetyGate 
+                isOpen={showSafetyGate} 
+                onClose={() => setShowSafetyGate(false)} 
+                onSuccess={(pin) => executeAction(pin)}
+                title="Authorization Required"
+            />
         </div>
     );
 };

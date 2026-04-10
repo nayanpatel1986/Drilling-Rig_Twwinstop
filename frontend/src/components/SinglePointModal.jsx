@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { X, Target, Save, AlertCircle } from 'lucide-react';
 import { writeModbusCoil, writeModbusFloat, writeModbusRegister } from '../api';
+import SafetyGate from './SafetyGate';
 
 const SinglePointModal = ({ isOpen, onClose, data }) => {
     const [knownHeight, setKnownHeight] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [showSafetyGate, setShowSafetyGate] = useState(false);
 
     if (!isOpen) return null;
 
@@ -15,14 +17,20 @@ const SinglePointModal = ({ isOpen, onClose, data }) => {
     const HEIGHT_ADDRESS = 528; // Modbus Address for the Float (Known Height)
     const CALIBRATION_DONE_COIL = 403; // Modbus Coil Address for MX50.3 boolean flag
 
-    const handleAction = async () => {
+    const handlePreSubmit = () => {
+        if (!knownHeight) return;
+        setShowSafetyGate(true);
+    };
+
+    const handleAction = async (pin) => {
+        setShowSafetyGate(false);
         setLoading(true);
         setError(null);
         let errors = [];
 
         // 1. Write known height float
         try {
-            const floatRes = await writeModbusFloat(deviceId, HEIGHT_ADDRESS, parseFloat(knownHeight || 0));
+            const floatRes = await writeModbusFloat(deviceId, HEIGHT_ADDRESS, parseFloat(knownHeight || 0), pin);
             if (floatRes && !floatRes.success) {
                 errors.push(`Height error: ${floatRes.error}`);
             }
@@ -32,12 +40,12 @@ const SinglePointModal = ({ isOpen, onClose, data }) => {
 
         // 2. Write calibration done register pulse
         try {
-            const regRes = await writeModbusRegister(deviceId, 36, 1);
+            const regRes = await writeModbusRegister(deviceId, 36, 1, pin);
             if (regRes && !regRes.success) {
                 errors.push(`Trigger error: ${regRes.error}`);
             } else {
                 await new Promise(resolve => setTimeout(resolve, 500));
-                await writeModbusRegister(deviceId, 36, 0);
+                await writeModbusRegister(deviceId, 36, 0, pin);
             }
         } catch (err) {
             errors.push(`Trigger exception: ${err.response?.data?.detail || err.message}`);
@@ -89,7 +97,7 @@ const SinglePointModal = ({ isOpen, onClose, data }) => {
                         </div>
 
                         <button 
-                            onClick={handleAction}
+                            onClick={handlePreSubmit}
                             disabled={loading || !knownHeight}
                             className={`w-full py-3 rounded-xl font-bold uppercase tracking-wide flex items-center justify-center gap-2 transition-all shadow-lg ${loading || !knownHeight ? 'bg-purple-500/20 text-purple-500/50 cursor-not-allowed border outline-none border-purple-500/10' : 'bg-purple-500 hover:bg-purple-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.2)] active:scale-95 border border-purple-400/30'}`}
                         >
@@ -121,6 +129,13 @@ const SinglePointModal = ({ isOpen, onClose, data }) => {
                     </p>
                 </div>
             </div>
+
+            <SafetyGate 
+                isOpen={showSafetyGate} 
+                onClose={() => setShowSafetyGate(false)} 
+                onSuccess={(pin) => handleAction(pin)}
+                title="Calibration Safety Lock"
+            />
         </div>
     );
 };

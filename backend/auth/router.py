@@ -1,8 +1,10 @@
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from database import get_db
-from db_models import User
+from db_models import User, UserRole
 from .utils import verify_password, get_password_hash, create_access_token
 from pydantic import BaseModel
 from datetime import timedelta
@@ -15,6 +17,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 class Token(BaseModel):
     access_token: str
     token_type: str
+    username: str
+    role: str
 
 class PinVerify(BaseModel):
     pin: str
@@ -23,6 +27,7 @@ class UserCreate(BaseModel):
     username: str
     email: str
     password: str
+    role: Optional[str] = None
 
 class UserResponse(BaseModel):
     username: str
@@ -31,36 +36,59 @@ class UserResponse(BaseModel):
     class Config:
         orm_mode = True
 
-@router.post("/register", response_model=UserResponse)
-def register(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.username == user.username).first()
-    if db_user:
+
+def _ensure_unique_user_fields(user: UserCreate, db: Session):
+    existing_username = db.query(User).filter(User.username == user.username).first()
+    if existing_username:
         raise HTTPException(status_code=400, detail="Username already registered")
-    
-    hashed_password = get_password_hash(user.password)
-    # First user logic: Allow first registered user to be admin, 
-    # but only if no users exist. In production, this should likely be 
-    # disabled after initial setup.
-    is_first = db.query(User).count() == 0
-    ENV = os.getenv("ENV", "development").lower()
-    
-    if ENV == "production" and not is_first:
-        # Require an existing admin to create new users in production
-        # (This is simplified; you'd ideally check current_user.role == 'admin')
-        raise HTTPException(status_code=403, detail="Public registration disabled in production")
-        
-    role = "admin" if is_first else "viewer"
-    
+
+    existing_email = db.query(User).filter(User.email == user.email).first()
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+
+def _create_user_record(user: UserCreate, db: Session, role: str) -> User:
     new_user = User(
         username=user.username,
         email=user.email,
-        hashed_password=hashed_password,
-        role=role
+        hashed_password=get_password_hash(user.password),
+        role=role,
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return new_user
+
+
+def _normalize_role(role: Optional[str], default: str = UserRole.VIEWER.value) -> str:
+    if role is None:
+        return default
+
+    normalized = role.strip().lower()
+    valid_roles = {item.value for item in UserRole}
+    if normalized not in valid_roles:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid role. Allowed roles: {', '.join(sorted(valid_roles))}",
+        )
+    return normalized
+
+@router.post("/register", response_model=UserResponse)
+def register(user: UserCreate, db: Session = Depends(get_db)):
+    _ensure_unique_user_fields(user, db)
+    ENV = os.getenv("ENV", "development").lower()
+    user_count = db.query(User).count()
+    
+    # SECURITY: Disable public registration in production after the initial bootstrap user.
+    # Once an admin exists, new users must be created through the authenticated admin flow.
+    if ENV == "production":
+        if user_count > 0:
+             raise HTTPException(status_code=403, detail="Public registration disabled. Contact system administrator.")
+        
+    # Bootstrap the first user as admin so the system can be configured.
+    # All subsequent public registrations, when allowed, are viewers.
+    role = UserRole.ADMIN.value if user_count == 0 else UserRole.VIEWER.value
+    return _create_user_record(user, db, role)
 
 @router.post("/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -78,7 +106,12 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
         data={"sub": user.username, "role": user.role}, 
         expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "username": user.username,
+        "role": user.role,
+    }
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     # Simple decode, in real app verify sub
@@ -103,11 +136,32 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
     return user
 
+
+def require_admin(current_user: User = Depends(get_current_user)):
+    if current_user.role != UserRole.ADMIN.value:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
+
+
+def require_operator_or_admin(current_user: User = Depends(get_current_user)):
+    if current_user.role not in {UserRole.ADMIN.value, UserRole.OPERATOR.value}:
+        raise HTTPException(status_code=403, detail="Operator or admin access required")
+    return current_user
+
 @router.get("/users", response_model=list[UserResponse])
-def get_users(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized")
+def get_users(db: Session = Depends(get_db), _: User = Depends(require_admin)):
     return db.query(User).all()
+
+
+@router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def create_user(
+    user: UserCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    _ensure_unique_user_fields(user, db)
+    role = _normalize_role(user.role)
+    return _create_user_record(user, db, role=role)
 
 @router.post("/verify-pin")
 async def verify_pin(data: PinVerify):

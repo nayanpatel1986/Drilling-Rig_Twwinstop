@@ -24,7 +24,7 @@ LIVE_MODE = os.getenv("LIVE_MODE", "false").lower() == "true"
 from auth.router import get_current_user
 
 # Get CORS origins from environment or default to localhost
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:8081,http://127.0.0.1:8081").split(",")
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:8081,http://127.0.0.1:8081,http://localhost:3001,http://127.0.0.1:3001").split(",")
 
 app.add_middleware(
     CORSMiddleware,
@@ -153,9 +153,8 @@ async def get_latest_data(_: User = Depends(get_current_user)):
     # 3. Merge Data
     merged_data = {**sensor_data, **witsml_data}
     
-    if not merged_data:
-        return {"error": "No data available from WITSML or Sensors"}
-        
+    # Always return a valid object, even if empty, to prevent frontend freeze.
+    # Frontend handles empty objects by defaulting to 0/Offline.
     return convert_units_to_metric(merged_data)
 
 @rig_router.get("/history")
