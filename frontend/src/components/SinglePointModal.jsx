@@ -14,7 +14,7 @@ const SinglePointModal = ({ isOpen, onClose, data }) => {
     const deviceId = 1; // Twinstop Device ID
     
     // --> IMPORTANT: UPDATE THESE PLACEHOLDER MODBUS ADDRESSES <-- //
-    const HEIGHT_ADDRESS = 528; // Modbus Address for the Float (Known Height)
+    const HEIGHT_ADDRESS = 416; // Modbus Address for the Float (Known Height)
     const CALIBRATION_DONE_COIL = 403; // Modbus Coil Address for MX50.3 boolean flag
 
     const handlePreSubmit = () => {
